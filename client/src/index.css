@@ -1,16 +1,51 @@
+/* index.css - Global styling for hele appen */
+
+/* Reset - Fjerner standard browser-styling */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* Base body-styling */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f9fafb;
   min-height: 100vh;
-  color: #333;
+  color: #111827;
+  line-height: 1.5;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Loading-skjerm */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 1.25rem;
+  color: #6b7280;
+}
+
+/* Global link-styling */
+a {
+  color: #059669;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Fjern styling fra knapper som ser ut som lenker */
+button {
+  font-family: inherit;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
 }

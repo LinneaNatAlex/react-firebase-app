@@ -1,0 +1,477 @@
+/* JobsPage.css - Styling for stillingslistesiden */
+
+.jobs-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+/* ===== HEADER MED SØK ===== */
+.jobs-header {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  padding: 3rem 2rem;
+}
+
+.jobs-header-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.jobs-header h1 {
+  color: white;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.jobs-header > .jobs-header-content > p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+/* ===== SØKEBOKS ===== */
+.search-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.search-box {
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.search-input {
+  flex: 2;
+  padding: 1rem 1.25rem;
+  border: none;
+  font-size: 1rem;
+  outline: none;
+}
+
+.location-input {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  border: none;
+  border-left: 1px solid #e5e7eb;
+  font-size: 1rem;
+  outline: none;
+}
+
+.search-button {
+  padding: 1rem 1.5rem;
+  background: #059669;
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-button:hover {
+  background: #047857;
+}
+
+/* ===== HOVEDINNHOLD ===== */
+.jobs-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.jobs-results-header {
+  margin-bottom: 1.5rem;
+}
+
+.jobs-results-header h2 {
+  font-size: 1.25rem;
+  color: #374151;
+}
+
+/* ===== STILLINGSRUTENETT ===== */
+.jobs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ===== STILLINGSKORT ===== */
+.job-listing-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.job-listing-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.job-listing-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.company-logo {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.company-logo.large {
+  width: 70px;
+  height: 70px;
+  font-size: 1.75rem;
+}
+
+.job-listing-title h3 {
+  font-size: 1.1rem;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.company-name {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.job-listing-meta {
+  display: flex;
+  gap: 1rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.job-salary {
+  color: #059669;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.job-listing-description {
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.job-listing-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.job-date {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.view-job-button {
+  background: #ecfdf5;
+  color: #059669;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.view-job-button:hover {
+  background: #d1fae5;
+}
+
+/* ===== INGEN RESULTATER ===== */
+.no-results {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+}
+
+.no-results-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.no-results h3 {
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.no-results p {
+  color: #6b7280;
+}
+
+.loading-text {
+  text-align: center;
+  color: #6b7280;
+  padding: 3rem;
+}
+
+/* ===== JOBB-MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.job-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.close-modal {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #f3f4f6;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.close-modal:hover {
+  background: #e5e7eb;
+}
+
+.job-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.job-modal-header h2 {
+  font-size: 1.5rem;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.job-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.job-modal-description {
+  margin-bottom: 2rem;
+}
+
+.job-modal-description h3 {
+  font-size: 1.1rem;
+  color: #111827;
+  margin-bottom: 0.75rem;
+}
+
+.job-modal-description p {
+  color: #374151;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.job-modal-actions {
+  text-align: center;
+}
+
+.apply-button {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.apply-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(5, 150, 105, 0.35);
+}
+
+.info-text {
+  color: #6b7280;
+}
+
+.info-text a {
+  color: #059669;
+}
+
+/* ===== SØKNADSSKJEMA ===== */
+.apply-modal {
+  max-width: 600px;
+}
+
+.profile-preview {
+  background: #ecfdf5;
+  border: 1px solid #059669;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.profile-preview h4 {
+  font-size: 0.9rem;
+  color: #059669;
+  margin-bottom: 0.5rem;
+}
+
+.profile-preview p {
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.profile-notice {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.profile-notice a {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.apply-form .form-group {
+  margin: 1rem 0;
+}
+
+.cover-letter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.cover-letter-header label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.ai-btn-small {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-btn-small:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.ai-btn-small:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.apply-form textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 150px;
+}
+
+.apply-form textarea:focus {
+  outline: none;
+  border-color: #059669;
+}
+
+.apply-form .form-hint {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+.ai-credit-inline {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+.apply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* ===== RESPONSIVT ===== */
+@media (max-width: 768px) {
+  .jobs-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .search-box {
+    flex-direction: column;
+  }
+
+  .location-input {
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .job-listing-meta {
+    flex-wrap: wrap;
+  }
+
+  .job-listing-footer {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+}

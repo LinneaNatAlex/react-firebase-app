@@ -1,0 +1,370 @@
+/* LandingPage.css - Styling for forsiden */
+
+.landing-page {
+  min-height: 100vh;
+}
+
+/* ===== HERO SEKSJON ===== */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 4rem;
+}
+
+.hero-content {
+  flex: 1;
+}
+
+.hero-content h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: #6b7280;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.hero-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-illustration {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8rem;
+}
+
+/* ===== KNAPPER ===== */
+.button {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.button.primary {
+  background: #059669;
+  color: white;
+}
+
+.button.primary:hover {
+  background: #047857;
+  transform: translateY(-2px);
+}
+
+.button.secondary {
+  background: white;
+  color: #059669;
+  border-color: #059669;
+}
+
+.button.secondary:hover {
+  background: #ecfdf5;
+}
+
+.button.large {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+}
+
+/* ===== STATISTIKK ===== */
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 4rem;
+  padding: 3rem 2rem;
+  background: #f9fafb;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #059669;
+}
+
+.stat-label {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+/* ===== FUNKSJONER ===== */
+.features {
+  padding: 5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.features h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: #111827;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.feature-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.75rem;
+}
+
+.feature-card p {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* ===== FOR HVEM ===== */
+.for-whom {
+  padding: 5rem 2rem;
+  background: #f9fafb;
+}
+
+.for-whom h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: #111827;
+}
+
+.for-whom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.for-whom-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.for-whom-card h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #111827;
+}
+
+.for-whom-card ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 2rem;
+}
+
+.for-whom-card li {
+  padding: 0.5rem 0;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.for-whom-card li::before {
+  content: "✓";
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* ===== CTA SEKSJON ===== */
+.cta {
+  padding: 5rem 2rem;
+  text-align: center;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  color: white;
+}
+
+.cta h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.cta p {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+  opacity: 0.9;
+}
+
+.cta .button.primary {
+  background: white;
+  color: #059669;
+}
+
+.cta .button.primary:hover {
+  background: #f0fdf4;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  background: #111827;
+  color: white;
+  padding: 4rem 2rem 2rem;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 4rem;
+  flex-wrap: wrap;
+}
+
+.footer-brand h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.footer-brand p {
+  color: #9ca3af;
+}
+
+.footer-links {
+  display: flex;
+  gap: 4rem;
+}
+
+.footer-column h4 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.footer-column a {
+  display: block;
+  color: #9ca3af;
+  text-decoration: none;
+  padding: 0.25rem 0;
+  transition: color 0.2s;
+}
+
+.footer-column a:hover {
+  color: white;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 2rem;
+  margin-top: 3rem;
+  border-top: 1px solid #374151;
+  color: #9ca3af;
+}
+
+.ai-credit {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.ai-credit a {
+  color: #10b981;
+  text-decoration: none;
+}
+
+.ai-credit a:hover {
+  text-decoration: underline;
+}
+
+/* ===== RESPONSIVT DESIGN ===== */
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+  }
+
+  .hero-illustration {
+    width: 200px;
+    height: 200px;
+    font-size: 5rem;
+  }
+
+  .stats {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .features h2,
+  .for-whom h2,
+  .cta h2 {
+    font-size: 1.75rem;
+  }
+
+  .footer-content {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 2rem;
+  }
+}
