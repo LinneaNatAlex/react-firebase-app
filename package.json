@@ -1,0 +1,13 @@
+{
+  "name": "react-firebase-app",
+  "version": "1.0.0",
+  "description": "React + Vite + Node.js + Firebase fullstack application",
+  "scripts": {
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "install:all": "cd client && npm install && cd ../server && npm install"
+  },
+  "keywords": ["react", "vite", "nodejs", "firebase", "firestore"],
+  "author": "",
+  "license": "MIT"
+}
