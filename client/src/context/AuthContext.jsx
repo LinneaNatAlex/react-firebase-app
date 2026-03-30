@@ -10,13 +10,30 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import {
+  buildCompanySearchNameLower,
+  buildUserSearchNameLower,
+} from "../utils/searchName";
 import { auth, db, googleProvider } from "../firebase";
+import { resolveAccountDeletionOnLogin } from "../services/accountDeletion";
 
 const AuthContext = createContext();
 
 // Denne hooken brukes i andre komponenter: const { login, logout } = useAuth()
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+// Hent bruker-dokument + profilbilde fra CV-profil (samme konto)
+async function fetchUserWithProfilePhoto(uid) {
+  const userDoc = await getDoc(doc(db, "users", uid));
+  if (!userDoc.exists()) return null;
+  const data = { ...userDoc.data() };
+  const profileDoc = await getDoc(doc(db, "profiles", uid));
+  if (profileDoc.exists() && profileDoc.data().profileImage) {
+    data.profileImage = profileDoc.data().profileImage;
+  }
+  return data;
 }
 
 export function AuthProvider({ children }) {
@@ -33,12 +50,13 @@ export function AuthProvider({ children }) {
     );
     const user = userCredential.user;
 
-    // Lagre brukertype og annen info i Firestore
+    // Lagre brukertype og annen info i Firestore (AI-kvote kun for bedrifter)
     await setDoc(doc(db, "users", user.uid), {
       email: email,
       userType: userType,
       createdAt: new Date(),
       ...additionalData,
+      ...(userType === "company" ? { aiPass: false } : {}),
     });
 
     return user;
@@ -52,7 +70,7 @@ export function AuthProvider({ children }) {
   async function loginWithGoogle() {
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
-    
+
     // Sjekk om brukeren finnes i databasen fra før
     const userDoc = await getDoc(doc(db, "users", user.uid));
     return { user, isNewUser: !userDoc.exists() };
@@ -61,23 +79,30 @@ export function AuthProvider({ children }) {
   // Fullfør sosial innlogging med valgt brukertype
   async function completeSocialSignup(userType, additionalData = {}) {
     if (!currentUser) return;
-    
+
     await setDoc(doc(db, "users", currentUser.uid), {
       email: currentUser.email,
       userType: userType,
       createdAt: new Date(),
       ...additionalData,
+      ...(userType === "company" ? { aiPass: false } : {}),
     });
-    
+
     // Oppdater lokal userData
-    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-    if (userDoc.exists()) {
-      setUserData(userDoc.data());
-    }
+    const merged = await fetchUserWithProfilePhoto(currentUser.uid);
+    if (merged) setUserData(merged);
   }
 
   function logout() {
     return signOut(auth);
+  }
+
+  // Oppdater brukerdata (f.eks. etter nytt profilbilde)
+  async function refreshUserData() {
+    const user = auth.currentUser;
+    if (!user) return;
+    const merged = await fetchUserWithProfilePhoto(user.uid);
+    setUserData(merged);
   }
 
   // Kjører når appen starter - sjekker om bruker allerede er logget inn
@@ -85,12 +110,20 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
 
-      // Hent ekstra brukerdata fra database hvis innlogget
       if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        let merged = await fetchUserWithProfilePhoto(user.uid);
+        if (merged?.accountDeletionDeadline?.toMillis) {
+          const result = await resolveAccountDeletionOnLogin(db, user, merged);
+          if (result === "purged") {
+            setUserData(null);
+            setLoading(false);
+            return;
+          }
+          if (result === "cancelled") {
+            merged = await fetchUserWithProfilePhoto(user.uid);
+          }
         }
+        setUserData(merged);
       } else {
         setUserData(null);
       }
@@ -110,6 +143,7 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     completeSocialSignup,
     logout,
+    refreshUserData,
     loading,
   };
 

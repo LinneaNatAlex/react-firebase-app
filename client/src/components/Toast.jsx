@@ -1,6 +1,6 @@
 // Toast-varslingssystem - erstatter alert() med pene meldinger
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, createContext, useContext } from 'react';
 import '../styles/Toast.css';
 
 const ToastContext = createContext();

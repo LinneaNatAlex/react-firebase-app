@@ -3,18 +3,26 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { normalizeRegisterTypeParam } from "../utils/accountTypes";
+import {
+  buildCompanySearchNameLower,
+  buildUserSearchNameLower,
+} from "../utils/searchName";
 import "../styles/Auth.css";
 
 function RegisterPage() {
-  const { register, loginWithGoogle, completeSocialSignup, currentUser } = useAuth();
+  const { register, loginWithGoogle, completeSocialSignup, currentUser } =
+    useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Sjekk om bruker kom fra sosial innlogging
   const isSocialSignup = searchParams.get("social") === "true";
 
-  // Brukertype: 'company' eller 'jobseeker' (eller null hvis ikke valgt ennå)
-  const [userType, setUserType] = useState(searchParams.get("type") || null);
+  // Lagret som 'jobseeker' i Firestore; URL kan bruke type=person eller type=jobseeker
+  const [userType, setUserType] = useState(() =>
+    normalizeRegisterTypeParam(searchParams.get("type")),
+  );
 
   const [formData, setFormData] = useState({
     email: "",
@@ -44,9 +52,9 @@ function RegisterPage() {
     try {
       setError("");
       setLoading(true);
-      
+
       const result = await loginWithGoogle();
-      
+
       if (!result.isNewUser) {
         navigate("/dashboard/company");
       }
@@ -67,20 +75,27 @@ function RegisterPage() {
     try {
       setError("");
       setLoading(true);
-      
+
       let additionalData = {};
       if (selectedType === "company") {
-        additionalData = { companyName: currentUser?.displayName || "Min bedrift" };
+        const cn = currentUser?.displayName || "Min bedrift";
+        additionalData = {
+          companyName: cn,
+          searchNameLower: buildCompanySearchNameLower(cn),
+        };
       } else {
         const nameParts = (currentUser?.displayName || "").split(" ");
+        const fn = nameParts[0] || "";
+        const ln = nameParts.slice(1).join(" ") || "";
         additionalData = {
-          firstName: nameParts[0] || "",
-          lastName: nameParts.slice(1).join(" ") || "",
+          firstName: fn,
+          lastName: ln,
+          searchNameLower: buildUserSearchNameLower(fn, ln),
         };
       }
-      
+
       await completeSocialSignup(selectedType, additionalData);
-      
+
       if (selectedType === "company") {
         navigate("/dashboard/company");
       } else {
@@ -115,16 +130,26 @@ function RegisterPage() {
           companyName: formData.companyName,
           orgNumber: formData.orgNumber,
           contactPerson: formData.contactPerson,
+          searchNameLower: buildCompanySearchNameLower(formData.companyName),
         };
       } else {
         additionalData = {
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: formData.phone,
+          searchNameLower: buildUserSearchNameLower(
+            formData.firstName,
+            formData.lastName,
+          ),
         };
       }
 
-      await register(formData.email, formData.password, userType, additionalData);
+      await register(
+        formData.email,
+        formData.password,
+        userType,
+        additionalData,
+      );
 
       if (userType === "company") {
         navigate("/dashboard/company");
@@ -151,7 +176,9 @@ function RegisterPage() {
     return (
       <div className="auth-page">
         <div className="auth-container type-selection">
-          <h1>{isSocialSignup || currentUser ? "Velg kontotype" : "Opprett konto"}</h1>
+          <h1>
+            {isSocialSignup || currentUser ? "Velg kontotype" : "Opprett konto"}
+          </h1>
           <p className="auth-subtitle">
             {isSocialSignup || currentUser
               ? "Siste steg - hva beskriver deg best?"
@@ -170,7 +197,9 @@ function RegisterPage() {
               }
               disabled={loading}
             >
-              <span className="type-icon">🏢</span>
+              <span className="type-icon" aria-hidden>
+                B
+              </span>
               <h3>Bedrift</h3>
               <p>Jeg vil rekruttere ansatte</p>
               <ul>
@@ -189,13 +218,15 @@ function RegisterPage() {
               }
               disabled={loading}
             >
-              <span className="type-icon">👤</span>
-              <h3>Jobbsøker</h3>
-              <p>Jeg leter etter jobb</p>
+              <span className="type-icon" aria-hidden>
+                P
+              </span>
+              <h3>Privatperson</h3>
+              <p>Personlig konto – også om du allerede er i jobb</p>
               <ul>
-                <li>Søk på stillinger</li>
-                <li>Last opp CV</li>
-                <li>Følg dine søknader</li>
+                <li>CV og profil på ett sted</li>
+                <li>Søk på utlyste stillinger</li>
+                <li>Se status og meldinger fra arbeidsgivere</li>
               </ul>
             </button>
           </div>
@@ -214,10 +245,22 @@ function RegisterPage() {
                 disabled={loading}
               >
                 <svg width="18" height="18" viewBox="0 0 18 18">
-                  <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-                  <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-                  <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-                  <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                  <path
+                    fill="#4285F4"
+                    d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+                  />
                 </svg>
                 Fortsett med Google
               </button>
@@ -241,12 +284,14 @@ function RegisterPage() {
         </button>
 
         <h1>
-          {userType === "company" ? "🏢 Registrer bedrift" : "👤 Opprett profil"}
+          {userType === "company"
+            ? "Registrer bedrift"
+            : "Registrer som privatperson"}
         </h1>
         <p className="auth-subtitle">
           {userType === "company"
             ? "Start å rekruttere de beste kandidatene"
-            : "Finn din drømmejobb"}
+            : "Privatkonto for CV, søknader og oversikt – uansett om du søker ny jobb eller ikke"}
         </p>
 
         {error && <div className="auth-error">{error}</div>}

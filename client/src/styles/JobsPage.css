@@ -7,7 +7,7 @@
 
 /* ===== HEADER MED SØK ===== */
 .jobs-header {
-  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0d9488 100%);
   padding: 3rem 2rem;
 }
 
@@ -62,7 +62,7 @@
 
 .search-button {
   padding: 1rem 1.5rem;
-  background: #059669;
+  background: var(--color-primary);
   color: white;
   border: none;
   font-weight: 600;
@@ -71,7 +71,7 @@
 }
 
 .search-button:hover {
-  background: #047857;
+  background: var(--color-primary-hover);
 }
 
 /* ===== HOVEDINNHOLD ===== */
@@ -121,7 +121,7 @@
 .company-logo {
   width: 50px;
   height: 50px;
-  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0d9488 100%);
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -148,6 +148,18 @@
   font-size: 0.9rem;
 }
 
+a.company-name-link {
+  display: inline-block;
+  margin: 0;
+  color: var(--color-primary, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+a.company-name-link:hover {
+  text-decoration: underline;
+}
+
 .job-listing-meta {
   display: flex;
   gap: 1rem;
@@ -157,7 +169,7 @@
 }
 
 .job-salary {
-  color: #059669;
+  color: var(--color-primary);
   font-weight: 500;
   margin-bottom: 0.75rem;
 }
@@ -183,8 +195,8 @@
 }
 
 .view-job-button {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--color-tint);
+  color: var(--color-primary);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 8px;
@@ -206,9 +218,13 @@
 }
 
 .no-results-icon {
-  font-size: 4rem;
   display: block;
-  margin-bottom: 1rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  border: 2px dashed var(--color-border, #e5e7eb);
+  background: var(--color-tint, rgba(230, 239, 233, 0.45));
 }
 
 .no-results h3 {
@@ -314,7 +330,7 @@
 }
 
 .apply-button {
-  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0d9488 100%);
   color: white;
   border: none;
   padding: 1rem 2rem;
@@ -335,7 +351,7 @@
 }
 
 .info-text a {
-  color: #059669;
+  color: var(--color-primary);
 }
 
 /* ===== SØKNADSSKJEMA ===== */
@@ -344,8 +360,8 @@
 }
 
 .profile-preview {
-  background: #ecfdf5;
-  border: 1px solid #059669;
+  background: var(--color-tint);
+  border: 1px solid var(--color-primary);
   border-radius: 8px;
   padding: 1rem;
   margin: 1rem 0;
@@ -353,7 +369,7 @@
 
 .profile-preview h4 {
   font-size: 0.9rem;
-  color: #059669;
+  color: var(--color-primary);
   margin-bottom: 0.5rem;
 }
 
@@ -384,17 +400,42 @@
 .cover-letter-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
 .cover-letter-header label {
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text);
+}
+
+.cover-letter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.template-btn-small {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.template-btn-small:hover {
+  background: var(--color-tint);
 }
 
 .ai-btn-small {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: linear-gradient(145deg, var(--color-primary) 0%, var(--color-link-bright) 100%);
   color: white;
   border: none;
   padding: 0.4rem 0.75rem;
@@ -406,7 +447,7 @@
 }
 
 .ai-btn-small:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  filter: brightness(1.05);
 }
 
 .ai-btn-small:disabled {
@@ -427,7 +468,7 @@
 
 .apply-form textarea:focus {
   outline: none;
-  border-color: #059669;
+  border-color: var(--color-primary);
 }
 
 .apply-form .form-hint {

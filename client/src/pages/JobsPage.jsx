@@ -1,18 +1,19 @@
 // Stillingslisteside - viser alle aktive jobber, alle kan se denne
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { isAIConfigured } from '../services/ai';
+import { buildCoverLetterTemplate } from '../services/freeTemplates';
 import '../styles/JobsPage.css';
 
 function JobsPage() {
   const { currentUser, userData } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -25,8 +26,6 @@ function JobsPage() {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [userProfile, setUserProfile] = useState(null);
-  const [aiGenerating, setAiGenerating] = useState(false);
-
   async function fetchJobs() {
     try {
       setLoading(true);
@@ -50,6 +49,16 @@ function JobsPage() {
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    const openJobId = location.state?.openJobId;
+    if (!openJobId || jobs.length === 0) return;
+    const job = jobs.find((j) => j.id === openJobId);
+    if (job) {
+      setSelectedJob(job);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, jobs, location.pathname, navigate]);
 
   // Filtrer basert på søkeord og sted
   const filteredJobs = jobs.filter(job => {
@@ -87,52 +96,17 @@ function JobsPage() {
     setCoverLetter('');
   }
 
-  // AI-generer søknadstekst
-  async function generateCoverLetterAI() {
+  function fillCoverLetterTemplate() {
     if (!selectedJob) return;
-    
-    setAiGenerating(true);
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { 
-              role: 'system', 
-              content: 'Du er en ekspert på å skrive overbevisende søknadstekster på norsk. Skriv personlig og engasjerende.'
-            },
-            { 
-              role: 'user', 
-              content: `Skriv en søknadstekst for stillingen "${selectedJob.title}" hos ${selectedJob.companyName}.
-
-Stillingsbeskrivelse:
-${selectedJob.description?.substring(0, 500)}
-
-${userProfile ? `Min bakgrunn:
-${userProfile.summary || ''}
-${userProfile.experience || ''}
-${userProfile.skills || ''}` : 'Jeg er en motivert jobbsøker.'}
-
-Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
-      });
-
-      const data = await response.json();
-      setCoverLetter(data.choices[0].message.content);
-    } catch (error) {
-      console.error('AI-feil:', error);
-      toast.error('Kunne ikke generere tekst. Prøv igjen.');
-    }
-    setAiGenerating(false);
+    const text = buildCoverLetterTemplate({
+      jobTitle: selectedJob.title,
+      companyName: selectedJob.companyName,
+      jobDescriptionSnippet: selectedJob.description,
+      profile: userProfile,
+      applicantEmail: currentUser?.email,
+    });
+    setCoverLetter(text);
+    toast.success('Utkast lagt inn lokalt – tilpass før du sender');
   }
 
   // Sender søknad på en stilling
@@ -176,7 +150,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
 
       await addDoc(collection(db, 'applications'), applicationData);
 
-      toast.success('Søknad sendt! 🎉');
+      toast.success('Søknad sendt.');
       setSelectedJob(null);
       setShowApplyForm(false);
       setCoverLetter('');
@@ -215,7 +189,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="location-input"
               />
-              <button className="search-button">🔍 Søk</button>
+              <button type="button" className="search-button">Søk</button>
             </div>
           </div>
         </div>
@@ -230,7 +204,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
           <p className="loading-text">Laster stillinger...</p>
         ) : filteredJobs.length === 0 ? (
           <div className="no-results">
-            <span className="no-results-icon">🔍</span>
+            <span className="no-results-icon" aria-hidden />
             <h3>Ingen stillinger funnet</h3>
             <p>Prøv å justere søket ditt eller fjern filtre</p>
           </div>
@@ -244,20 +218,26 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                   </div>
                   <div className="job-listing-title">
                     <h3>{job.title}</h3>
-                    <p className="company-name">{job.companyName}</p>
+                    {job.companyId ? (
+                      <Link to={`/bedrift/${job.companyId}`} className="company-name company-name-link">
+                        {job.companyName}
+                      </Link>
+                    ) : (
+                      <p className="company-name">{job.companyName}</p>
+                    )}
                   </div>
                 </div>
                 
                 <div className="job-listing-meta">
-                  <span>📍 {job.location || 'Ikke spesifisert'}</span>
-                  <span>💼 {job.type === 'full-time' ? 'Heltid' : 
+                  <span>Sted: {job.location || 'Ikke spesifisert'}</span>
+                  <span>Type: {job.type === 'full-time' ? 'Heltid' : 
                            job.type === 'part-time' ? 'Deltid' : 
                            job.type === 'contract' ? 'Kontrakt' : 
                            job.type}</span>
                 </div>
 
                 {job.salary && (
-                  <p className="job-salary">💰 {job.salary}</p>
+                  <p className="job-salary">Lønn: {job.salary}</p>
                 )}
 
                 <p className="job-listing-description">
@@ -291,7 +271,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
               className="close-modal"
               onClick={() => setSelectedJob(null)}
             >
-              ✕
+              ×
             </button>
 
             <div className="job-modal-header">
@@ -300,14 +280,20 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
               </div>
               <div>
                 <h2>{selectedJob.title}</h2>
-                <p className="company-name">{selectedJob.companyName}</p>
+                {selectedJob.companyId ? (
+                  <Link to={`/bedrift/${selectedJob.companyId}`} className="company-name company-name-link">
+                    {selectedJob.companyName}
+                  </Link>
+                ) : (
+                  <p className="company-name">{selectedJob.companyName}</p>
+                )}
               </div>
             </div>
 
             <div className="job-modal-meta">
-              <span>📍 {selectedJob.location || 'Ikke spesifisert'}</span>
-              <span>💼 {selectedJob.type === 'full-time' ? 'Heltid' : selectedJob.type}</span>
-              {selectedJob.salary && <span>💰 {selectedJob.salary}</span>}
+              <span>Sted: {selectedJob.location || 'Ikke spesifisert'}</span>
+              <span>Type: {selectedJob.type === 'full-time' ? 'Heltid' : selectedJob.type}</span>
+              {selectedJob.salary && <span>Lønn: {selectedJob.salary}</span>}
             </div>
 
             <div className="job-modal-description">
@@ -325,7 +311,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                     Søk på stillingen
                   </button>
                 ) : (
-                  <p className="info-text">Logg inn som jobbsøker for å søke</p>
+                  <p className="info-text">Logg inn med privatkonto for å søke</p>
                 )
               ) : (
                 <p className="info-text">
@@ -345,20 +331,26 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
               className="close-modal"
               onClick={() => { setShowApplyForm(false); setSelectedJob(null); }}
             >
-              ✕
+              ×
             </button>
 
             <h2>Søk på: {selectedJob.title}</h2>
-            <p className="company-name">{selectedJob.companyName}</p>
+            {selectedJob.companyId ? (
+              <Link to={`/bedrift/${selectedJob.companyId}`} className="company-name company-name-link">
+                {selectedJob.companyName}
+              </Link>
+            ) : (
+              <p className="company-name">{selectedJob.companyName}</p>
+            )}
 
             {userProfile ? (
               <div className="profile-preview">
-                <h4>📎 Din CV vil bli vedlagt</h4>
+                <h4>Din CV vil bli vedlagt</h4>
                 <p>{userProfile.summary?.substring(0, 100) || 'Profil uten sammendrag'}...</p>
               </div>
             ) : (
               <div className="profile-notice">
-                <p>💡 <strong>Tips:</strong> <a href="/dashboard/user">Fyll ut CV-en din</a> for å gjøre søknaden mer komplett!</p>
+                <p><strong>Tips:</strong> <a href="/dashboard/user">Fyll ut CV-en din</a> for å gjøre søknaden mer komplett!</p>
               </div>
             )}
 
@@ -366,19 +358,15 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
               <div className="form-group">
                 <div className="cover-letter-header">
                   <label>Søknadstekst *</label>
-                  {isAIConfigured() && (
-                    <>
-                      <button 
-                        type="button"
-                        className="ai-btn-small"
-                        onClick={generateCoverLetterAI}
-                        disabled={aiGenerating}
-                      >
-                        {aiGenerating ? '✨ Genererer...' : '✨ Generer med AI'}
-                      </button>
-                      <span className="ai-credit-inline">Groq + Llama 3.3</span>
-                    </>
-                  )}
+                  <div className="cover-letter-actions">
+                    <button
+                      type="button"
+                      className="template-btn-small"
+                      onClick={fillCoverLetterTemplate}
+                    >
+                      Lag utkast fra CV
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   value={coverLetter}
@@ -390,7 +378,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                 <p className="form-hint">
                   {coverLetter.length > 0 
                     ? `${coverLetter.length} tegn` 
-                    : 'Skriv selv eller klikk "Generer med AI" for å lage en søknadstekst'}
+                    : 'Skriv selv eller bruk «Lag utkast fra CV» (lokalt, gratis).'}
                 </p>
               </div>
 
@@ -405,13 +393,14 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                   className="apply-button"
                   onClick={handleApply}
                 >
-                  📨 Send søknad
+                  Send søknad
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

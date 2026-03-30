@@ -1,0 +1,135 @@
+/* Utblikk — redaksjonell forside */
+
+.magazine-page {
+  min-height: calc(100vh - 60px);
+  background: var(--color-bg);
+  padding: 0 1.25rem 3rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.magazine-masthead {
+  text-align: center;
+  padding: 2.5rem 0 1.75rem;
+  border-bottom: 3px double var(--color-text);
+  margin-bottom: 2rem;
+}
+
+.magazine-kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 0.35rem;
+}
+
+.magazine-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.magazine-tagline {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  color: var(--color-muted);
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+.magazine-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .magazine-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .magazine-rail {
+    order: -1;
+  }
+}
+
+.magazine-main {
+  min-width: 0;
+}
+
+.magazine-placeholder-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 1.75rem 1.5rem;
+}
+
+.magazine-placeholder-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+  color: var(--color-text);
+}
+
+.magazine-placeholder-card p {
+  margin: 0 0 1rem;
+  color: var(--color-muted);
+  line-height: 1.65;
+}
+
+.magazine-placeholder-card p:last-child {
+  margin-bottom: 0;
+}
+
+.magazine-placeholder-muted {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.magazine-rail {
+  position: sticky;
+  top: 1rem;
+}
+
+.magazine-rail-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.magazine-rail-box h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0 0 0.65rem;
+  color: var(--color-text);
+}
+
+.magazine-rail-muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.magazine-footer-nav {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+.magazine-footer-nav a {
+  color: var(--color-primary);
+  font-weight: 500;
+}

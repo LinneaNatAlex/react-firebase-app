@@ -1,41 +1,60 @@
 // Dashboard for bedrifter - administrer stillingsannonser og se søkere
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { generateJobPosting, isAIConfigured } from '../services/ai';
-import '../styles/Dashboard.css';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/Toast";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import {
+  buildJobPostingTemplate,
+  scoreApplicationAgainstJob,
+} from "../services/freeTemplates";
+import { postAi } from "../services/aiApi";
+import AiPaywallModal from "../components/AiPaywallModal";
+import NotificationSettingsPanel from "../components/NotificationSettingsPanel";
+import { notifyJobseekerApplicationUpdate } from "../services/notifications";
+import "../styles/Dashboard.css";
 
 function CompanyDashboard() {
-  const { currentUser, userData } = useAuth();
+  const { currentUser, userData, refreshUserData } = useAuth();
   const toast = useToast();
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('jobs');
+  const [activeTab, setActiveTab] = useState("jobs");
   const [showNewJobForm, setShowNewJobForm] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
+  const [aiError, setAiError] = useState("");
   const [rankingInProgress, setRankingInProgress] = useState(false);
-  
+  const [aiJobLoading, setAiJobLoading] = useState(false);
+  const [showAiPaywall, setShowAiPaywall] = useState(false);
+
   // Melding til søker
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageRecipient, setMessageRecipient] = useState(null);
-  const [messageText, setMessageText] = useState('');
-  const [pendingStatus, setPendingStatus] = useState('');
+  const [messageText, setMessageText] = useState("");
+  const [pendingStatus, setPendingStatus] = useState("");
 
   // Skjemadata for ny stilling
   const [newJob, setNewJob] = useState({
-    title: '',
-    description: '',
-    location: '',
-    type: 'full-time',
-    salary: '',
-    keywords: ''
+    title: "",
+    description: "",
+    location: "",
+    type: "full-time",
+    salary: "",
+    keywords: "",
   });
 
   // Hent stillinger og søknader
@@ -44,64 +63,68 @@ function CompanyDashboard() {
 
     try {
       setLoading(true);
-      
+
       // Hent stillinger
       const jobsQuery = query(
-        collection(db, 'jobs'),
-        where('companyId', '==', currentUser.uid)
+        collection(db, "jobs"),
+        where("companyId", "==", currentUser.uid),
       );
       const jobsSnapshot = await getDocs(jobsQuery);
-      const jobsList = jobsSnapshot.docs.map(document => ({
+      const jobsList = jobsSnapshot.docs.map((document) => ({
         id: document.id,
-        ...document.data()
+        ...document.data(),
       }));
-      
+
       // Hent job IDs for denne bedriften
-      const jobIds = jobsList.map(job => job.id);
-      
+      const jobIds = jobsList.map((job) => job.id);
+
       // Hent alle søknader - først prøv med companyId, deretter filtrer på jobId
       let appsList = [];
-      
+
       if (jobIds.length > 0) {
         // Hent alle søknader fra databasen
-        const allAppsSnapshot = await getDocs(collection(db, 'applications'));
-        
+        const allAppsSnapshot = await getDocs(collection(db, "applications"));
+
         // Filtrer søknader som matcher våre stillinger
-        const relevantApps = allAppsSnapshot.docs.filter(doc => {
+        const relevantApps = allAppsSnapshot.docs.filter((doc) => {
           const data = doc.data();
-          return jobIds.includes(data.jobId) || data.companyId === currentUser.uid;
+          return (
+            jobIds.includes(data.jobId) || data.companyId === currentUser.uid
+          );
         });
-        
+
         appsList = await Promise.all(
           relevantApps.map(async (document) => {
             const appData = { id: document.id, ...document.data() };
-            
+
             // Hent søkerens profil hvis den finnes
             if (appData.userId) {
               try {
-                const profileDoc = await getDoc(doc(db, 'profiles', appData.userId));
+                const profileDoc = await getDoc(
+                  doc(db, "profiles", appData.userId),
+                );
                 if (profileDoc.exists()) {
                   appData.profile = profileDoc.data();
                 }
               } catch (e) {
-                console.error('Kunne ikke hente profil:', e);
+                console.error("Kunne ikke hente profil:", e);
               }
             }
             return appData;
-          })
+          }),
         );
       }
 
       // Oppdater søkertall på hver stilling
-      const jobsWithCounts = jobsList.map(job => ({
+      const jobsWithCounts = jobsList.map((job) => ({
         ...job,
-        applicantCount: appsList.filter(app => app.jobId === job.id).length
+        applicantCount: appsList.filter((app) => app.jobId === job.id).length,
       }));
-      
+
       setJobs(jobsWithCounts);
       setApplications(appsList);
     } catch (error) {
-      console.error('Feil ved henting av data:', error);
+      console.error("Feil ved henting av data:", error);
     } finally {
       setLoading(false);
     }
@@ -116,169 +139,190 @@ function CompanyDashboard() {
     event.preventDefault();
 
     try {
-      await addDoc(collection(db, 'jobs'), {
+      await addDoc(collection(db, "jobs"), {
         ...newJob,
         companyId: currentUser.uid,
-        companyName: userData?.companyName || 'Ukjent bedrift',
+        companyName: userData?.companyName || "Ukjent bedrift",
         createdAt: new Date(),
-        status: 'active'
+        status: "active",
       });
 
       setNewJob({
-        title: '',
-        description: '',
-        location: '',
-        type: 'full-time',
-        salary: '',
-        keywords: ''
+        title: "",
+        description: "",
+        location: "",
+        type: "full-time",
+        salary: "",
+        keywords: "",
       });
       setShowNewJobForm(false);
       fetchData();
     } catch (error) {
-      console.error('Feil ved opprettelse av jobb:', error);
+      console.error("Feil ved opprettelse av jobb:", error);
     }
   }
 
   async function handleDeleteJob(jobId) {
-    if (!window.confirm('Er du sikker på at du vil slette denne stillingen?')) return;
+    if (!window.confirm("Er du sikker på at du vil slette denne stillingen?"))
+      return;
 
     try {
-      await deleteDoc(doc(db, 'jobs', jobId));
+      await deleteDoc(doc(db, "jobs", jobId));
       fetchData();
     } catch (error) {
-      console.error('Feil ved sletting:', error);
+      console.error("Feil ved sletting:", error);
     }
   }
 
-  // AI-generering av stillingsannonse
-  async function handleGenerateWithAI() {
-    if (!newJob.title) {
-      setAiError('Fyll inn stillingstittel først');
+  const aiAccessLabel =
+    userData?.aiPass === true
+      ? "AI: aktiv tilgang (ubegrenset for bedriften)"
+      : "AI: krever kjøpt tilgang – ingen gratis prøveperioder.";
+
+  // Stillingsutkast fra skjema – helt lokalt, ingen API
+  function handleFillJobTemplate() {
+    if (!newJob.title?.trim()) {
+      setAiError("Fyll inn stillingstittel først");
       return;
     }
+    setAiError("");
+    const text = buildJobPostingTemplate({
+      title: newJob.title,
+      company: userData?.companyName || "Bedriften",
+      location: newJob.location,
+      type: newJob.type,
+      salary: newJob.salary,
+      keywords: newJob.keywords,
+      companyAbout:
+        userData?.companyAbout != null ? String(userData.companyAbout) : "",
+    });
+    setNewJob({ ...newJob, description: text });
+    toast.success("Stillingstekst lagt inn – tilpass som du vil");
+  }
 
-    setAiLoading(true);
-    setAiError('');
-
+  async function handleAiJobPosting() {
+    if (userData?.aiPass !== true) {
+      setShowAiPaywall(true);
+      return;
+    }
+    if (!newJob.title?.trim()) {
+      setAiError("Fyll inn stillingstittel først");
+      return;
+    }
+    if (!currentUser) return;
+    setAiError("");
+    setAiJobLoading(true);
     try {
-      const generatedText = await generateJobPosting({
+      const out = await postAi(currentUser, "jobPosting", {
         title: newJob.title,
-        company: userData?.companyName || 'Bedriften',
-        location: newJob.location || 'Norge',
-        type: newJob.type === 'full-time' ? 'Heltid' : 
-              newJob.type === 'part-time' ? 'Deltid' : 
-              newJob.type === 'contract' ? 'Kontrakt' : 'Internship',
-        keywords: newJob.keywords
+        company: userData?.companyName || "Bedriften",
+        location: newJob.location,
+        type: newJob.type,
+        salary: newJob.salary,
+        keywords: newJob.keywords,
+        companyAbout: (userData?.companyAbout != null
+          ? String(userData.companyAbout)
+          : ""
+        ).trim(),
       });
-
-      setNewJob({ ...newJob, description: generatedText });
-    } catch (error) {
-      console.error('AI-feil:', error);
-      setAiError(error.message || 'Kunne ikke generere tekst. Prøv igjen.');
-    } finally {
-      setAiLoading(false);
+      setNewJob({ ...newJob, description: out.text });
+      await refreshUserData();
+      toast.success("AI-utkast lagt inn – les gjennom og tilpass");
+    } catch (e) {
+      if (e.code === "AI_LIMIT") setShowAiPaywall(true);
+      else
+        toast.error(
+          e.message || "AI feilet. Sjekk at server kjører med GROQ_API_KEY.",
+        );
     }
+    setAiJobLoading(false);
   }
 
-  // AI-rangering av søkere for en stilling
+  // Rangering: nøkkelord fra annonsen mot søknad/CV (gratis, uendelig skalerbart)
   async function rankApplicants(job) {
-    const jobApplications = applications.filter(app => app.jobId === job.id);
+    const jobApplications = applications.filter((app) => app.jobId === job.id);
     if (jobApplications.length === 0) {
-      toast.warning('Ingen søkere å rangere');
-      return;
-    }
-
-    if (!isAIConfigured()) {
-      toast.error('AI er ikke konfigurert');
+      toast.warning("Ingen søkere å rangere");
       return;
     }
 
     setRankingInProgress(true);
 
     try {
-      // Bygg søkeroversikt for AI
-      const applicantSummaries = jobApplications.map((app, index) => {
-        const profile = app.profile || {};
-        return `
-Søker ${index + 1} (ID: ${app.id}):
-- Navn: ${app.applicantName || 'Ikke oppgitt'}
-- Erfaring: ${profile.experience || 'Ikke oppgitt'}
-- Utdanning: ${profile.education || 'Ikke oppgitt'}
-- Ferdigheter: ${profile.skills || 'Ikke oppgitt'}
-- Søknadstekst: ${app.coverLetter?.substring(0, 300) || 'Ingen'}
-`;
-      }).join('\n');
+      const desc = job.description || "";
+      for (const app of jobApplications) {
+        const { score, reason } = scoreApplicationAgainstJob(desc, app);
+        await updateDoc(doc(db, "applications", app.id), {
+          aiScore: score,
+          aiReason: reason,
+        });
+      }
+      fetchData();
+      toast.success("Treff-score beregnet (lokalt – les begrunnelsene)");
+    } catch (error) {
+      console.error("Rangering feilet:", error);
+      toast.error("Kunne ikke oppdatere score. Prøv igjen.");
+    }
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { 
-              role: 'system', 
-              content: `Du er en erfaren rekrutterer som evaluerer jobbsøkere objektivt.
-Gi en score fra 1-100 og kort begrunnelse for hver søker.
-Svar i JSON-format: [{"id": "søker-id", "score": tall, "reason": "kort begrunnelse"}]`
-            },
-            { 
-              role: 'user', 
-              content: `Ranger disse søkerne for stillingen "${job.title}".
+    setRankingInProgress(false);
+  }
 
-Stillingsbeskrivelse:
-${job.description?.substring(0, 500)}
+  async function rankApplicantsWithAi(job) {
+    if (userData?.aiPass !== true) {
+      setShowAiPaywall(true);
+      return;
+    }
+    const jobApplications = applications.filter((app) => app.jobId === job.id);
+    if (jobApplications.length === 0) {
+      toast.warning("Ingen søkere å rangere");
+      return;
+    }
+    if (!currentUser) return;
 
-Søkere:
-${applicantSummaries}
-
-Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 2000,
-        }),
+    setRankingInProgress(true);
+    try {
+      const out = await postAi(currentUser, "rankApplicants", {
+        jobDescription: job.description || "",
+        applicants: jobApplications.map((app) => ({
+          id: app.id,
+          applicantName: app.applicantName,
+          coverLetter: app.coverLetter,
+          profile: app.profile,
+        })),
       });
-
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-      
-      // Parse JSON
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const rankings = JSON.parse(jsonMatch[0]);
-        
-        // Oppdater søknadene med score
-        for (const ranking of rankings) {
-          const appRef = doc(db, 'applications', ranking.id);
-          await updateDoc(appRef, {
-            aiScore: ranking.score,
-            aiReason: ranking.reason
+      const rankings = Array.isArray(out.rankings) ? out.rankings : [];
+      for (let i = 0; i < jobApplications.length; i++) {
+        const app = jobApplications[i];
+        let r = rankings.find((x) => String(x.id) === String(app.id));
+        if (!r && rankings[i]) r = rankings[i];
+        if (r && (r.score != null || r.reason)) {
+          await updateDoc(doc(db, "applications", app.id), {
+            aiScore: Math.min(100, Math.max(0, Number(r.score) || 0)),
+            aiReason: String(r.reason || "").trim() || "AI-vurdering",
           });
         }
-        
-        // Oppdater lokal state
-        fetchData();
-        toast.success('Søkere er rangert!');
       }
-    } catch (error) {
-      console.error('Rangering feilet:', error);
-      toast.error('Kunne ikke rangere søkere. Prøv igjen.');
+      await refreshUserData();
+      fetchData();
+      toast.success("AI-vurdering lagret – les alltid søknadene selv");
+    } catch (e) {
+      if (e.code === "AI_LIMIT") setShowAiPaywall(true);
+      else toast.error(e.message || "AI-rangering feilet.");
+    } finally {
+      setRankingInProgress(false);
     }
-    
-    setRankingInProgress(false);
   }
 
   // Oppdater søknadsstatus
   // Håndter statusendring - vis meldingsmodal for intervju
   function handleStatusChange(applicant, newStatus) {
-    if (newStatus === 'interview') {
+    if (newStatus === "interview") {
       // Vis modal for å sende melding
       setMessageRecipient(applicant);
       setPendingStatus(newStatus);
-      setMessageText(`Hei ${applicant.applicantName || 'søker'}!\n\nVi vil gjerne invitere deg til intervju for stillingen "${applicant.jobTitle}".\n\nVi tar kontakt med deg for å avtale tidspunkt.\n\nMed vennlig hilsen\n${userData?.companyName || 'Bedriften'}`);
+      setMessageText(
+        `Hei ${applicant.applicantName || "søker"}!\n\nVi vil gjerne invitere deg til intervju for stillingen "${applicant.jobTitle}".\n\nVi tar kontakt med deg for å avtale tidspunkt.\n\nMed vennlig hilsen\n${userData?.companyName || "Bedriften"}`,
+      );
       setShowMessageModal(true);
     } else {
       // Oppdater status direkte for andre statuser
@@ -289,46 +333,75 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
   // Oppdater status og eventuelt legg til melding
   async function updateApplicationStatus(appId, newStatus, message) {
     try {
-      const updateData = { 
+      const appRef = doc(db, "applications", appId);
+      const beforeSnap = await getDoc(appRef);
+      const before = beforeSnap.exists() ? beforeSnap.data() : null;
+
+      const updateData = {
         status: newStatus,
-        statusUpdatedAt: new Date()
+        statusUpdatedAt: new Date(),
       };
-      
+
       if (message) {
         updateData.companyMessage = message;
         updateData.messageDate = new Date();
-        updateData.messageSender = userData?.companyName || 'Bedriften';
+        updateData.messageSender = userData?.companyName || "Bedriften";
       }
-      
-      await updateDoc(doc(db, 'applications', appId), updateData);
+
+      await updateDoc(appRef, updateData);
       fetchData();
+
+      if (before?.userId && currentUser?.uid) {
+        try {
+          await notifyJobseekerApplicationUpdate(db, {
+            applicantUid: before.userId,
+            companyId: currentUser.uid,
+            companyName: userData?.companyName || "Bedrift",
+            jobTitle: before.jobTitle,
+            applicationId: appId,
+            previousStatus: before.status || "pending",
+            newStatus,
+            hasCompanyMessage: Boolean(message),
+          });
+        } catch (e) {
+          console.warn("notifyJobseekerApplicationUpdate", e);
+        }
+      }
     } catch (error) {
-      console.error('Kunne ikke oppdatere status:', error);
+      console.error("Kunne ikke oppdatere status:", error);
     }
   }
 
   // Send melding og oppdater status
   async function sendMessageAndUpdateStatus() {
     if (!messageRecipient || !pendingStatus) return;
-    
-    await updateApplicationStatus(messageRecipient.id, pendingStatus, messageText);
-    
-    toast.success(`Invitasjon sendt til ${messageRecipient.applicantName}! 🎉`);
-    
+
+    await updateApplicationStatus(
+      messageRecipient.id,
+      pendingStatus,
+      messageText,
+    );
+
+    toast.success(`Invitasjon sendt til ${messageRecipient.applicantName}.`);
+
     setShowMessageModal(false);
     setMessageRecipient(null);
-    setMessageText('');
-    setPendingStatus('');
-    
+    setMessageText("");
+    setPendingStatus("");
+
     if (selectedApplicant?.id === messageRecipient.id) {
-      setSelectedApplicant({...selectedApplicant, status: pendingStatus, companyMessage: messageText});
+      setSelectedApplicant({
+        ...selectedApplicant,
+        status: pendingStatus,
+        companyMessage: messageText,
+      });
     }
   }
 
   // Hent søkere for valgt stilling
   const getApplicantsForJob = (jobId) => {
     return applications
-      .filter(app => app.jobId === jobId)
+      .filter((app) => app.jobId === jobId)
       .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0));
   };
 
@@ -336,34 +409,61 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
     <div className="dashboard">
       <aside className="dashboard-sidebar">
         <div className="sidebar-header">
-          <h2>🏢 {userData?.companyName || 'Min bedrift'}</h2>
+          <h2 className="sidebar-user-name">{userData?.companyName || "Min bedrift"}</h2>
         </div>
         <nav className="sidebar-nav">
-          <button 
-            className={activeTab === 'jobs' ? 'active' : ''}
-            onClick={() => { setActiveTab('jobs'); setSelectedJob(null); }}
+          <p className="sidebar-label">Oversikt</p>
+          <button
+            className={activeTab === "jobs" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("jobs");
+              setSelectedJob(null);
+            }}
           >
-            📋 Stillinger ({jobs.length})
+            Stillinger ({jobs.length})
           </button>
-          <button 
-            className={activeTab === 'applicants' ? 'active' : ''}
-            onClick={() => setActiveTab('applicants')}
+          <button
+            className={activeTab === "applicants" ? "active" : ""}
+            onClick={() => setActiveTab("applicants")}
           >
-            👥 Alle søkere ({applications.length})
+            Alle søkere ({applications.length})
           </button>
+          <button
+            className={activeTab === "notifications" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("notifications");
+              setSelectedJob(null);
+            }}
+          >
+            Varsler
+          </button>
+          <p className="sidebar-label sidebar-label--spaced">Profil</p>
+          <Link className="nav-item" to="/dashboard/company/profil">
+            Bedriftsprofil
+          </Link>
+          {currentUser?.uid ? (
+            <Link className="nav-item" to={`/bedrift/${currentUser.uid}`}>
+              Offentlig bedriftsside
+            </Link>
+          ) : null}
         </nav>
       </aside>
 
       <main className="dashboard-main">
+        {activeTab === "notifications" && <NotificationSettingsPanel />}
+
         {/* STILLINGER-FANE */}
-        {activeTab === 'jobs' && !selectedJob && (
+        {activeTab === "jobs" && !selectedJob && (
           <>
             <header className="dashboard-header">
               <div>
                 <h1>Stillingsannonser</h1>
                 <p>Administrer dine utlyste stillinger</p>
               </div>
-              <button className="button primary" onClick={() => setShowNewJobForm(true)}>
+              <button
+                className="button primary"
+                onClick={() => setShowNewJobForm(true)}
+              >
                 + Ny stilling
               </button>
             </header>
@@ -373,42 +473,53 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                 <p className="loading-text">Laster stillinger...</p>
               ) : jobs.length === 0 ? (
                 <div className="empty-state">
-                  <span className="empty-icon">📋</span>
+                  <span className="empty-state-graphic" aria-hidden />
                   <h3>Ingen stillinger ennå</h3>
-                  <p>Opprett din første stillingsannonse for å begynne å motta søkere.</p>
-                  <button className="button primary" onClick={() => setShowNewJobForm(true)}>
+                  <p>
+                    Opprett din første stillingsannonse for å begynne å motta
+                    søkere.
+                  </p>
+                  <button
+                    className="button primary"
+                    onClick={() => setShowNewJobForm(true)}
+                  >
                     + Opprett stilling
                   </button>
                 </div>
               ) : (
                 <div className="jobs-list">
-                  {jobs.map(job => (
+                  {jobs.map((job) => (
                     <div key={job.id} className="job-card">
                       <div className="job-card-header">
                         <h3>{job.title}</h3>
                         <span className={`status-badge ${job.status}`}>
-                          {job.status === 'active' ? 'Aktiv' : 'Pauset'}
+                          {job.status === "active" ? "Aktiv" : "Pauset"}
                         </span>
                       </div>
                       <div className="job-card-meta">
-                        <span>📍 {job.location || 'Ikke spesifisert'}</span>
-                        <span>💼 {job.type === 'full-time' ? 'Heltid' : job.type}</span>
+                        <span>Sted: {job.location || "Ikke spesifisert"}</span>
+                        <span>
+                          Type:{" "}
+                          {job.type === "full-time" ? "Heltid" : job.type}
+                        </span>
                       </div>
                       <p className="job-card-description">
                         {job.description?.substring(0, 150)}...
                       </p>
                       <div className="job-card-footer">
-                        <span className={`applicant-count ${job.applicantCount > 0 ? 'has-applicants' : ''}`}>
-                          👥 {job.applicantCount || 0} søkere
+                        <span
+                          className={`applicant-count ${job.applicantCount > 0 ? "has-applicants" : ""}`}
+                        >
+                          {job.applicantCount || 0} søkere
                         </span>
                         <div className="job-card-actions">
-                          <button 
+                          <button
                             className="button small primary"
                             onClick={() => setSelectedJob(job)}
                           >
                             Se søkere
                           </button>
-                          <button 
+                          <button
                             className="button small danger"
                             onClick={() => handleDeleteJob(job.id)}
                           >
@@ -425,33 +536,70 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
         )}
 
         {/* SØKERE FOR VALGT STILLING */}
-        {activeTab === 'jobs' && selectedJob && (
+        {activeTab === "jobs" && selectedJob && (
           <>
             <header className="dashboard-header">
               <div>
-                <button className="back-link" onClick={() => setSelectedJob(null)}>
+                <button
+                  className="back-link"
+                  onClick={() => setSelectedJob(null)}
+                >
                   ← Tilbake til stillinger
                 </button>
                 <h1>Søkere: {selectedJob.title}</h1>
                 <p>{getApplicantsForJob(selectedJob.id).length} søkere</p>
-              </div>
-              {isAIConfigured() && getApplicantsForJob(selectedJob.id).length > 0 && (
-                <button 
-                  className="button primary ai-btn"
-                  onClick={() => rankApplicants(selectedJob)}
-                  disabled={rankingInProgress}
+                <p className="template-hint" style={{ marginTop: "0.35rem" }}>
+                  {aiAccessLabel}
+                </p>
+                <p
+                  className="template-hint"
+                  style={{ marginTop: "0.25rem", fontSize: "0.85rem" }}
                 >
-                  {rankingInProgress ? '✨ Rangerer...' : '✨ AI-ranger søkere'}
-                </button>
+                  <strong>Treff-score uten AI:</strong> teller hvor mange ord
+                  fra annonsen som også finnes i søknad/CV – enkel tekstmatch,
+                  ikke forståelse. <strong>AI-vurdering:</strong> Groq leser
+                  sammenhengen og gir score + kort begrunnelse.
+                </p>
+              </div>
+              {getApplicantsForJob(selectedJob.id).length > 0 && (
+                <div
+                  className="header-actions"
+                  style={{
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <button
+                    className="button primary ai-btn"
+                    type="button"
+                    onClick={() => rankApplicantsWithAi(selectedJob)}
+                    disabled={rankingInProgress}
+                  >
+                    {rankingInProgress
+                      ? "AI jobber…"
+                      : "AI-vurder søkere (Groq)"}
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => rankApplicants(selectedJob)}
+                    disabled={rankingInProgress}
+                  >
+                    {rankingInProgress
+                      ? "Beregner…"
+                      : "Treff-score uten AI (gratis)"}
+                  </button>
+                </div>
               )}
             </header>
 
             <div className="dashboard-content">
               {getApplicantsForJob(selectedJob.id).length === 0 ? (
                 <div className="empty-state">
-                  <span className="empty-icon">👥</span>
+                  <span className="empty-state-graphic" aria-hidden />
                   <h3>Ingen søkere ennå</h3>
-                  <p>Når jobbsøkere sender søknader, vil de vises her.</p>
+                  <p>Når privatpersoner sender søknader, vil de vises her.</p>
                 </div>
               ) : (
                 <div className="applicants-list">
@@ -461,45 +609,63 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                         {app.aiScore ? (
                           <div className="rank-badge">
                             <span className="rank-number">#{index + 1}</span>
-                            <span className="rank-score">{app.aiScore}/100</span>
+                            <span className="rank-score">
+                              {app.aiScore}/100
+                            </span>
                           </div>
                         ) : (
                           <span className="no-rank">-</span>
                         )}
                       </div>
-                      
+
                       <div className="applicant-info">
                         <div className="applicant-header">
                           {app.profile?.profileImage && (
-                            <img src={app.profile.profileImage} alt="" className="applicant-avatar" />
+                            <img
+                              src={app.profile.profileImage}
+                              alt=""
+                              className="applicant-avatar"
+                            />
                           )}
                           <div>
-                            <h3>{app.applicantName || 'Ukjent søker'}</h3>
-                            <p className="applicant-email">{app.applicantEmail}</p>
+                            <h3>{app.applicantName || "Ukjent søker"}</h3>
+                            <p className="applicant-email">
+                              {app.applicantEmail}
+                            </p>
                           </div>
                         </div>
-                        
+
                         {app.aiReason && (
-                          <p className="ai-reason">✨ {app.aiReason}</p>
+                          <p className="ai-reason">{app.aiReason}</p>
                         )}
-                        
+
                         {app.profile?.skills && (
                           <div className="applicant-skills">
-                            {app.profile.skills.split(',').slice(0, 4).map((skill, i) => (
-                              <span key={i} className="skill-tag small">{skill.trim()}</span>
-                            ))}
+                            {app.profile.skills
+                              .split(",")
+                              .slice(0, 4)
+                              .map((skill, i) => (
+                                <span key={i} className="skill-tag small">
+                                  {skill.trim()}
+                                </span>
+                              ))}
                           </div>
                         )}
-                        
+
                         <p className="applicant-date">
-                          Søkt: {app.appliedAt?.toDate?.()?.toLocaleDateString('nb-NO') || '-'}
+                          Søkt:{" "}
+                          {app.appliedAt
+                            ?.toDate?.()
+                            ?.toLocaleDateString("nb-NO") || "-"}
                         </p>
                       </div>
-                      
+
                       <div className="applicant-actions">
-                        <select 
-                          value={app.status || 'pending'}
-                          onChange={(e) => handleStatusChange(app, e.target.value)}
+                        <select
+                          value={app.status || "pending"}
+                          onChange={(e) =>
+                            handleStatusChange(app, e.target.value)
+                          }
                           className="status-select"
                         >
                           <option value="pending">Under vurdering</option>
@@ -508,14 +674,14 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                           <option value="accepted">Akseptert</option>
                           <option value="rejected">Avslått</option>
                         </select>
-                        <button 
+                        <button
                           className="button small primary"
-                          onClick={() => handleStatusChange(app, 'interview')}
+                          onClick={() => handleStatusChange(app, "interview")}
                           title="Send melding og inviter til intervju"
                         >
-                          📩 Inviter
+                          Inviter
                         </button>
-                        <button 
+                        <button
                           className="button small"
                           onClick={() => setSelectedApplicant(app)}
                         >
@@ -531,7 +697,7 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
         )}
 
         {/* ALLE SØKERE-FANE */}
-        {activeTab === 'applicants' && (
+        {activeTab === "applicants" && (
           <>
             <header className="dashboard-header">
               <div>
@@ -543,37 +709,55 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
             <div className="dashboard-content">
               {applications.length === 0 ? (
                 <div className="empty-state">
-                  <span className="empty-icon">👥</span>
+                  <span className="empty-state-graphic" aria-hidden />
                   <h3>Ingen søkere ennå</h3>
-                  <p>Når jobbsøkere sender søknader på dine stillinger, vil de vises her.</p>
+                  <p>
+                    Når privatpersoner sender søknader på dine stillinger, vil
+                    de vises her.
+                  </p>
                 </div>
               ) : (
                 <div className="applicants-list">
-                  {applications.map(app => (
+                  {applications.map((app) => (
                     <div key={app.id} className="applicant-card">
                       <div className="applicant-info">
                         <div className="applicant-header">
                           {app.profile?.profileImage && (
-                            <img src={app.profile.profileImage} alt="" className="applicant-avatar" />
+                            <img
+                              src={app.profile.profileImage}
+                              alt=""
+                              className="applicant-avatar"
+                            />
                           )}
                           <div>
-                            <h3>{app.applicantName || 'Ukjent søker'}</h3>
-                            <p className="applicant-job">Søkt på: {app.jobTitle}</p>
+                            <h3>{app.applicantName || "Ukjent søker"}</h3>
+                            <p className="applicant-job">
+                              Søkt på: {app.jobTitle}
+                            </p>
                           </div>
                         </div>
                         <p className="applicant-date">
-                          {app.appliedAt?.toDate?.()?.toLocaleDateString('nb-NO') || '-'}
+                          {app.appliedAt
+                            ?.toDate?.()
+                            ?.toLocaleDateString("nb-NO") || "-"}
                         </p>
                       </div>
-                      
+
                       <div className="applicant-actions">
-                        <span className={`status-badge ${app.status || 'pending'}`}>
-                          {app.status === 'interview' ? 'Til intervju' :
-                           app.status === 'accepted' ? 'Akseptert' :
-                           app.status === 'rejected' ? 'Avslått' :
-                           app.status === 'reviewed' ? 'Gjennomgått' : 'Under vurdering'}
+                        <span
+                          className={`status-badge ${app.status || "pending"}`}
+                        >
+                          {app.status === "interview"
+                            ? "Til intervju"
+                            : app.status === "accepted"
+                              ? "Akseptert"
+                              : app.status === "rejected"
+                                ? "Avslått"
+                                : app.status === "reviewed"
+                                  ? "Gjennomgått"
+                                  : "Under vurdering"}
                         </span>
-                        <button 
+                        <button
                           className="button small"
                           onClick={() => setSelectedApplicant(app)}
                         >
@@ -590,7 +774,10 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
 
         {/* NY STILLING MODAL */}
         {showNewJobForm && (
-          <div className="modal-overlay" onClick={() => setShowNewJobForm(false)}>
+          <div
+            className="modal-overlay"
+            onClick={() => setShowNewJobForm(false)}
+          >
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <h2>Opprett ny stilling</h2>
               <form onSubmit={handleCreateJob} className="job-form">
@@ -599,18 +786,24 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                   <input
                     type="text"
                     value={newJob.title}
-                    onChange={(e) => setNewJob({...newJob, title: e.target.value})}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, title: e.target.value })
+                    }
                     placeholder="F.eks. Frontend-utvikler"
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>Nøkkelord for AI</label>
+                  <label>
+                    Nøkkelord (brukes i mal og i treff-score mot søkere)
+                  </label>
                   <input
                     type="text"
                     value={newJob.keywords}
-                    onChange={(e) => setNewJob({...newJob, keywords: e.target.value})}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, keywords: e.target.value })
+                    }
                     placeholder="F.eks. React, TypeScript, 3 års erfaring"
                   />
                 </div>
@@ -618,24 +811,39 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                 <div className="form-group">
                   <div className="description-header">
                     <label>Beskrivelse *</label>
-                    {isAIConfigured() && (
+                    <div className="description-header-actions">
                       <button
                         type="button"
-                        className="ai-generate-btn"
-                        onClick={handleGenerateWithAI}
-                        disabled={aiLoading}
+                        className="template-generate-btn"
+                        onClick={handleFillJobTemplate}
                       >
-                        {aiLoading ? '✨ Genererer...' : '✨ Generer med AI'}
+                        Mal (gratis)
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        className="template-generate-btn"
+                        onClick={handleAiJobPosting}
+                        disabled={aiJobLoading}
+                      >
+                        {aiJobLoading ? "AI…" : "AI-utkast (Groq)"}
+                      </button>
+                    </div>
                   </div>
                   {aiError && <p className="ai-error">{aiError}</p>}
-                  {isAIConfigured() && (
-                    <p className="ai-powered-by">Drevet av Groq + Llama 3.3</p>
-                  )}
+                  <p className="template-hint">{aiAccessLabel}</p>
+                  <p className="template-hint">
+                    <strong>Mal (gratis):</strong> bruker tittel, sted,
+                    nøkkelord og teksten fra{" "}
+                    <Link to="/dashboard/company/profil">Bedriftsprofil</Link>{" "}
+                    (Om bedriften). <strong>AI-utkast:</strong> krever kjøpt
+                    AI-tilgang. Med <code>OPENAI_API_KEY</code> på serveren
+                    brukes tidligere stillinger som stil-referanse (RAG).
+                  </p>
                   <textarea
                     value={newJob.description}
-                    onChange={(e) => setNewJob({...newJob, description: e.target.value})}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, description: e.target.value })
+                    }
                     placeholder="Beskriv stillingen..."
                     rows={8}
                     required
@@ -648,7 +856,9 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                     <input
                       type="text"
                       value={newJob.location}
-                      onChange={(e) => setNewJob({...newJob, location: e.target.value})}
+                      onChange={(e) =>
+                        setNewJob({ ...newJob, location: e.target.value })
+                      }
                       placeholder="F.eks. Oslo"
                     />
                   </div>
@@ -656,7 +866,9 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                     <label>Stillingstype</label>
                     <select
                       value={newJob.type}
-                      onChange={(e) => setNewJob({...newJob, type: e.target.value})}
+                      onChange={(e) =>
+                        setNewJob({ ...newJob, type: e.target.value })
+                      }
                     >
                       <option value="full-time">Heltid</option>
                       <option value="part-time">Deltid</option>
@@ -671,13 +883,19 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                   <input
                     type="text"
                     value={newJob.salary}
-                    onChange={(e) => setNewJob({...newJob, salary: e.target.value})}
+                    onChange={(e) =>
+                      setNewJob({ ...newJob, salary: e.target.value })
+                    }
                     placeholder="F.eks. 500 000 - 650 000 kr"
                   />
                 </div>
 
                 <div className="form-buttons">
-                  <button type="button" className="button secondary" onClick={() => setShowNewJobForm(false)}>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => setShowNewJobForm(false)}
+                  >
                     Avbryt
                   </button>
                   <button type="submit" className="button primary">
@@ -691,26 +909,43 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
 
         {/* SØKER-DETALJER MODAL */}
         {selectedApplicant && (
-          <div className="modal-overlay" onClick={() => setSelectedApplicant(null)}>
-            <div className="modal applicant-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="close-modal" onClick={() => setSelectedApplicant(null)}>✕</button>
-              
+          <div
+            className="modal-overlay"
+            onClick={() => setSelectedApplicant(null)}
+          >
+            <div
+              className="modal applicant-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="close-modal"
+                onClick={() => setSelectedApplicant(null)}
+              >
+                ×
+              </button>
+
               <div className="applicant-detail-header">
                 {selectedApplicant.profile?.profileImage && (
-                  <img src={selectedApplicant.profile.profileImage} alt="" className="detail-avatar" />
+                  <img
+                    src={selectedApplicant.profile.profileImage}
+                    alt=""
+                    className="detail-avatar"
+                  />
                 )}
                 <div>
-                  <h2>{selectedApplicant.applicantName || 'Søker'}</h2>
+                  <h2>{selectedApplicant.applicantName || "Søker"}</h2>
                   <p>{selectedApplicant.applicantEmail}</p>
                   {selectedApplicant.aiScore && (
-                    <span className="detail-score">AI-score: {selectedApplicant.aiScore}/100</span>
+                    <span className="detail-score">
+                      AI-score: {selectedApplicant.aiScore}/100
+                    </span>
                   )}
                 </div>
               </div>
 
               {selectedApplicant.aiReason && (
                 <div className="detail-section ai-evaluation">
-                  <h3>✨ AI-vurdering</h3>
+                  <h3>AI-vurdering</h3>
                   <p>{selectedApplicant.aiReason}</p>
                 </div>
               )}
@@ -728,14 +963,18 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                   {selectedApplicant.profile.experience && (
                     <div className="detail-section">
                       <h3>Erfaring</h3>
-                      <p style={{whiteSpace: 'pre-line'}}>{String(selectedApplicant.profile.experience)}</p>
+                      <p style={{ whiteSpace: "pre-line" }}>
+                        {String(selectedApplicant.profile.experience)}
+                      </p>
                     </div>
                   )}
 
                   {selectedApplicant.profile.education && (
                     <div className="detail-section">
                       <h3>Utdanning</h3>
-                      <p style={{whiteSpace: 'pre-line'}}>{String(selectedApplicant.profile.education)}</p>
+                      <p style={{ whiteSpace: "pre-line" }}>
+                        {String(selectedApplicant.profile.education)}
+                      </p>
                     </div>
                   )}
 
@@ -743,9 +982,13 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                     <div className="detail-section">
                       <h3>Ferdigheter</h3>
                       <div className="applicant-skills">
-                        {String(selectedApplicant.profile.skills).split(',').map((skill, i) => (
-                          <span key={i} className="skill-tag">{skill.trim()}</span>
-                        ))}
+                        {String(selectedApplicant.profile.skills)
+                          .split(",")
+                          .map((skill, i) => (
+                            <span key={i} className="skill-tag">
+                              {skill.trim()}
+                            </span>
+                          ))}
                       </div>
                     </div>
                   )}
@@ -756,16 +999,22 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
               <div className="detail-section">
                 <h3>Søknadstekst</h3>
                 {selectedApplicant.coverLetter ? (
-                  <p className="cover-letter-text">{selectedApplicant.coverLetter}</p>
+                  <p className="cover-letter-text">
+                    {selectedApplicant.coverLetter}
+                  </p>
                 ) : (
-                  <p className="no-cover-letter">Søkeren sendte ikke med søknadstekst</p>
+                  <p className="no-cover-letter">
+                    Søkeren sendte ikke med søknadstekst
+                  </p>
                 )}
               </div>
 
               <div className="detail-actions">
-                <select 
-                  value={selectedApplicant.status || 'pending'}
-                  onChange={(e) => handleStatusChange(selectedApplicant, e.target.value)}
+                <select
+                  value={selectedApplicant.status || "pending"}
+                  onChange={(e) =>
+                    handleStatusChange(selectedApplicant, e.target.value)
+                  }
                   className="status-select large"
                 >
                   <option value="pending">Under vurdering</option>
@@ -774,13 +1023,15 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                   <option value="accepted">Akseptert</option>
                   <option value="rejected">Avslått</option>
                 </select>
-                
+
                 {/* Knapp for å invitere til intervju med melding */}
-                <button 
+                <button
                   className="button primary invite-btn"
-                  onClick={() => handleStatusChange(selectedApplicant, 'interview')}
+                  onClick={() =>
+                    handleStatusChange(selectedApplicant, "interview")
+                  }
                 >
-                  📩 Inviter til intervju
+                  Inviter til intervju
                 </button>
               </div>
             </div>
@@ -789,15 +1040,18 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
 
         {/* Modal for å sende melding til søker ved intervju */}
         {showMessageModal && messageRecipient && (
-          <div className="modal-overlay" onClick={() => setShowMessageModal(false)}>
+          <div
+            className="modal-overlay"
+            onClick={() => setShowMessageModal(false)}
+          >
             <div className="message-modal" onClick={(e) => e.stopPropagation()}>
-              <h2>🎉 Inviter {messageRecipient.applicantName} til intervju</h2>
-              
+              <h2>Inviter {messageRecipient.applicantName} til intervju</h2>
+
               <div className="message-modal-body">
                 <p className="message-subtitle">
-                  ✨ Søkeren vil se denne meldingen på sin profil
+                  Søkeren vil se denne meldingen på sin profil
                 </p>
-                
+
                 <div className="message-form">
                   <label>Din melding til kandidaten:</label>
                   <textarea
@@ -806,19 +1060,19 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
                     placeholder="Skriv en personlig melding til søkeren..."
                   />
                 </div>
-                
+
                 <div className="message-actions">
-                  <button 
+                  <button
                     className="button secondary"
                     onClick={() => setShowMessageModal(false)}
                   >
                     Avbryt
                   </button>
-                  <button 
+                  <button
                     className="button primary"
                     onClick={sendMessageAndUpdateStatus}
                   >
-                    ✓ Send invitasjon
+                    Send invitasjon
                   </button>
                 </div>
               </div>
@@ -826,6 +1080,13 @@ Ranger søkerne fra best til dårligst match. Svar KUN med JSON-array.`
           </div>
         )}
       </main>
+
+      <AiPaywallModal
+        open={showAiPaywall}
+        onClose={() => setShowAiPaywall(false)}
+        title="AI krever tilgang"
+        message="Det finnes ingen gratis AI-prøver. Kjøp tilgang (f.eks. via Stripe når det er klart) eller be administrator om å aktivere AI-pass for bedriften."
+      />
     </div>
   );
 }

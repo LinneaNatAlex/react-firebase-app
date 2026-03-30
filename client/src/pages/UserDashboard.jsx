@@ -1,26 +1,53 @@
-// Dashboard for jobbsøkere - CV, søknader og profil
+// Dashboard for privatkonto (userType jobseeker) – CV, søknader og profil
 
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { collection, query, where, getDocs, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { isAIConfigured } from '../services/ai';
+import { polishProfileLocal } from '../services/freeTemplates';
+import { syncPublicProfileImageFromCv } from '../services/social';
+import { buildUserSearchNameLower } from '../utils/searchName';
+import UserNetworkPanel from '../components/UserNetworkPanel';
+import IncomingFriendRequestsPanel from '../components/IncomingFriendRequestsPanel';
+import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
 import '../styles/Dashboard.css';
 
+const dismissedMessagesStorageKey = (uid) => `jobportal-dismissed-company-messages:${uid}`;
+
+function readDismissedMessageAppIds(uid) {
+  if (!uid) return new Set();
+  try {
+    const raw = localStorage.getItem(dismissedMessagesStorageKey(uid));
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDismissedMessageAppIds(uid, idSet) {
+  if (!uid) return;
+  localStorage.setItem(dismissedMessagesStorageKey(uid), JSON.stringify([...idSet]));
+}
+
 function UserDashboard() {
-  const { currentUser, userData } = useAuth();
+  const { currentUser, userData, refreshUserData } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('applications');
   const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [enhancedCV, setEnhancedCV] = useState(null);
   const [generatingCV, setGeneratingCV] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [dismissedMessageAppIds, setDismissedMessageAppIds] = useState(() => new Set());
   const fileInputRef = useRef(null);
+  const coverInputRef = useRef(null);
   
   // CV/Profil-data
   const [profile, setProfile] = useState({
@@ -31,12 +58,15 @@ function UserDashboard() {
     languages: '',
     jobTitle: '',
     profileImage: '',
-    coverLetterTemplate: '',
     phone: '',
     location: '',
     desiredPosition: '',
     linkedIn: '',
-    portfolio: ''
+    portfolio: '',
+    publicHandle: '',
+    coverImage: '',
+    publicHeadline: '',
+    publicIntro: '',
   });
 
   // Henter søknader og profil
@@ -75,6 +105,29 @@ function UserDashboard() {
     fetchData();
   }, [currentUser]);
 
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'network') {
+      setActiveTab('network');
+    } else if (tab === 'cv') {
+      setActiveTab('cv');
+    } else if (tab === 'public-profile') {
+      setActiveTab('public-profile');
+    } else if (tab === 'notifications') {
+      setActiveTab('notifications');
+    } else if (tab === 'applications') {
+      setActiveTab('applications');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setDismissedMessageAppIds(new Set());
+      return;
+    }
+    setDismissedMessageAppIds(readDismissedMessageAppIds(currentUser.uid));
+  }, [currentUser?.uid]);
+
   // Last opp profilbilde (lagres som base64 i Firestore)
   async function handleImageUpload(event) {
     const file = event.target.files[0];
@@ -110,8 +163,14 @@ function UserDashboard() {
       
       // Oppdater lokal state
       setProfile(prevProfile => ({ ...prevProfile, profileImage: base64 }));
-      
-      toast.success('Bilde lastet opp!');
+      await refreshUserData();
+      try {
+        await syncPublicProfileImageFromCv(currentUser.uid);
+      } catch {
+        /* ingen offentlig profil ennå */
+      }
+
+      toast.success('Profilbilde lagret på kontoen din');
 
     } catch (error) {
       console.error('Feil ved opplasting:', error);
@@ -120,18 +179,102 @@ function UserDashboard() {
     setUploadingImage(false);
   }
 
+  async function handleCoverUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file || !currentUser) return;
+    event.target.value = '';
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Velg et bilde (JPG, PNG …)');
+      return;
+    }
+    if (file.size > 1.2 * 1024 * 1024) {
+      toast.error('Bannerbilde kan være maks ca. 1,2 MB. Prøv et mindre bilde.');
+      return;
+    }
+
+    setUploadingCover(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      await setDoc(
+        doc(db, 'profiles', currentUser.uid),
+        { coverImage: base64, updatedAt: new Date() },
+        { merge: true },
+      );
+      setProfile((prev) => ({ ...prev, coverImage: base64 }));
+      await refreshUserData();
+      toast.success('Banner lagret — vises øverst på den offentlige profilen');
+    } catch (error) {
+      console.error(error);
+      toast.error('Kunne ikke laste opp banner.');
+    }
+    setUploadingCover(false);
+  }
+
   // Lagre CV/profil og generer forhåndsvisning
+  async function savePublicProfile() {
+    if (!currentUser) return;
+
+    setSaving(true);
+    try {
+      await setDoc(
+        doc(db, 'profiles', currentUser.uid),
+        {
+          publicHeadline: profile.publicHeadline,
+          publicIntro: profile.publicIntro,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      );
+
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        searchNameLower: buildUserSearchNameLower(
+          userData?.firstName,
+          userData?.lastName,
+        ),
+      });
+
+      toast.success('Profilside lagret – slik ser besøkende deg først.');
+    } catch (error) {
+      console.error('Feil ved lagring av profilside:', error);
+      toast.error('Kunne ikke lagre profilside. Prøv igjen.');
+    }
+    setSaving(false);
+  }
+
   async function saveProfile() {
     if (!currentUser) return;
     
     setSaving(true);
     try {
-      await setDoc(doc(db, 'profiles', currentUser.uid), {
-        ...profile,
-        updatedAt: new Date()
+      await setDoc(
+        doc(db, 'profiles', currentUser.uid),
+        {
+          ...profile,
+          updatedAt: new Date(),
+        },
+        { merge: true },
+      );
+
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        searchNameLower: buildUserSearchNameLower(
+          userData?.firstName,
+          userData?.lastName,
+        ),
       });
-      
-      // Generer forbedret CV med AI
+
+      try {
+        await syncPublicProfileImageFromCv(currentUser.uid);
+      } catch {
+        /* ingen offentlig profil */
+      }
+
       await generateEnhancedCV();
       
       // Bytt til forhåndsvisning-fanen
@@ -144,135 +287,16 @@ function UserDashboard() {
     setSaving(false);
   }
 
-  // AI-genererer en forbedret versjon av CV-en
+  // Ryddet CV-visning (punktlister) – helt lokalt
   async function generateEnhancedCV() {
-    if (!isAIConfigured()) {
-      setEnhancedCV(null);
-      return;
-    }
-
     setGeneratingCV(true);
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { 
-              role: 'system', 
-              content: `Du er en ekspert på CV-skriving og karriererådgivning. 
-Du skal forbedre og profesjonalisere CV-tekster på norsk.
-Behold all faktisk informasjon, men gjør språket mer profesjonelt og slagkraftig.
-Bruk aktive verb og kvantifiser resultater der mulig.`
-            },
-            { 
-              role: 'user', 
-              content: `Forbedre denne CV-en for en person som søker stilling som ${profile.jobTitle || 'generell stilling'}:
-
-SAMMENDRAG:
-${profile.summary || 'Ikke oppgitt'}
-
-ERFARING:
-${profile.experience || 'Ikke oppgitt'}
-
-UTDANNING:
-${profile.education || 'Ikke oppgitt'}
-
-FERDIGHETER:
-${profile.skills || 'Ikke oppgitt'}
-
-SPRÅK:
-${profile.languages || 'Ikke oppgitt'}
-
-Gi meg en forbedret versjon i JSON-format:
-{
-  "summary": "forbedret sammendrag",
-  "experience": "forbedret erfaring med bullet points",
-  "education": "forbedret utdanning",
-  "skills": "kategoriserte ferdigheter",
-  "languages": "språk med nivå",
-  "headline": "en profesjonell overskrift/tittel for personen"
-}
-
-Svar KUN med JSON, ingen annen tekst.`
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
-      });
-
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-      
-      // Parse JSON fra AI-respons
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const enhanced = JSON.parse(jsonMatch[0]);
-        setEnhancedCV(enhanced);
-      }
+      setEnhancedCV(polishProfileLocal(profile));
     } catch (error) {
-      console.error('AI CV-feil:', error);
+      console.error('CV-formatering feilet:', error);
       setEnhancedCV(null);
     }
     setGeneratingCV(false);
-  }
-
-  // AI-generering av søknadstekst
-  async function generateCoverLetter(jobTitle, companyName) {
-    if (!isAIConfigured()) {
-      toast.error('AI er ikke konfigurert');
-      return '';
-    }
-
-    setAiLoading(true);
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { 
-              role: 'system', 
-              content: 'Du er en ekspert på å skrive overbevisende søknadstekster på norsk. Skriv personlig og engasjerende.'
-            },
-            { 
-              role: 'user', 
-              content: `Skriv en søknadstekst for stillingen "${jobTitle}" hos ${companyName}.
-
-Min bakgrunn:
-${profile.summary || 'Ikke oppgitt'}
-
-Min erfaring:
-${profile.experience || 'Ikke oppgitt'}
-
-Mine ferdigheter:
-${profile.skills || 'Ikke oppgitt'}
-
-Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
-      });
-
-      const data = await response.json();
-      setAiLoading(false);
-      return data.choices[0].message.content;
-    } catch (error) {
-      console.error('AI-feil:', error);
-      setAiLoading(false);
-      return '';
-    }
   }
 
   // Konverterer status-kode til norsk tekst og farge
@@ -307,45 +331,232 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
 
   const fullName = userData 
     ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() 
-    : 'Jobbsøker';
+    : 'Privatperson';
+
+  const applicationsWithCompanyMessage = applications.filter((a) => a.companyMessage);
+  const undismissedMessageApps = applicationsWithCompanyMessage.filter(
+    (a) => !dismissedMessageAppIds.has(a.id),
+  );
+
+  function dismissCompanyMessagesBanner() {
+    if (!currentUser?.uid) return;
+    const next = new Set(dismissedMessageAppIds);
+    applicationsWithCompanyMessage.forEach((a) => next.add(a.id));
+    setDismissedMessageAppIds(next);
+    writeDismissedMessageAppIds(currentUser.uid, next);
+  }
+
+  // AuthContext har allerede hentet profilbilde fra Firestore før dashboardet vises;
+  // ikke bruk currentUser.photoURL her – det gir et kort blink med Google-bilde før fetchData() er ferdig.
+  const displayProfileImage = profile.profileImage || userData?.profileImage || '';
 
   return (
     <div className="dashboard">
+      {/* Skjult filvelger – alltid montert (sidebar + CV-fanen bruker samme) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="visually-hidden-file-input"
+        aria-hidden="true"
+      />
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCoverUpload}
+        className="visually-hidden-file-input"
+        aria-hidden="true"
+      />
+
       {/* Sidebar */}
       <aside className="dashboard-sidebar">
-        <div className="sidebar-header">
-          <h2>👤 {fullName}</h2>
+        <div className="sidebar-account-card">
+          <button
+            type="button"
+            className="sidebar-avatar-wrap"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage}
+            title="Bytt profilbilde"
+          >
+            {displayProfileImage ? (
+              <img src={displayProfileImage} alt="" className="sidebar-avatar" />
+            ) : (
+              <span className="sidebar-avatar-placeholder" aria-hidden>+</span>
+            )}
+            {uploadingImage && <span className="sidebar-avatar-loading">…</span>}
+          </button>
+          <p className="sidebar-account-label">Profilbilde på kontoen</p>
+          <button
+            type="button"
+            className="sidebar-photo-link"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage}
+          >
+            {displayProfileImage ? 'Bytt bilde' : 'Legg til bilde'}
+          </button>
+          <p className="sidebar-account-hint">Vises på offentlig profil og når du søker</p>
         </div>
-        <nav className="sidebar-nav">
-          <button 
-            className={activeTab === 'applications' ? 'active' : ''}
-            onClick={() => setActiveTab('applications')}
+
+        <div className="sidebar-banner-block">
+          <p className="sidebar-account-label">Banner på profilsiden</p>
+          <p className="sidebar-account-hint">Bredde bilde øverst når andre åpner profilen din.</p>
+          <button
+            type="button"
+            className="sidebar-photo-link"
+            onClick={() => coverInputRef.current?.click()}
+            disabled={uploadingCover}
           >
-            📄 Mine søknader
+            {uploadingCover ? 'Laster opp…' : profile.coverImage ? 'Bytt banner' : 'Last opp banner'}
           </button>
-          <button 
-            className={activeTab === 'cv' ? 'active' : ''}
-            onClick={() => setActiveTab('cv')}
-          >
-            ✏️ Rediger CV
-          </button>
-          <button 
-            className={activeTab === 'cv-preview' ? 'active' : ''}
-            onClick={() => setActiveTab('cv-preview')}
-          >
-            📎 Se CV
-          </button>
-          <button 
-            className={activeTab === 'cover-letter' ? 'active' : ''}
-            onClick={() => setActiveTab('cover-letter')}
-          >
-            ✍️ Søknadstekst
-          </button>
-          <Link to="/jobs" className="nav-item">🔍 Finn jobber</Link>
+        </div>
+
+        <div className="sidebar-header">
+          <h2 className="sidebar-user-name">{fullName}</h2>
+        </div>
+        <nav className="sidebar-nav" aria-label="Dashbordmeny">
+          <p className="sidebar-label">Offentlig profil</p>
+          <div className="sidebar-nav-stack">
+            <Link to="/profil/me" className="sidebar-nav-link sidebar-nav-link--highlight">
+              Vis profilen
+            </Link>
+            <button
+              type="button"
+              className={`sidebar-nav-link${activeTab === 'public-profile' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('public-profile');
+                setSearchParams({ tab: 'public-profile' });
+              }}
+            >
+              Rediger profilside
+            </button>
+            <Link to="/profil/me/cv" className="sidebar-nav-link">
+              CV-side (lenke)
+            </Link>
+            <button
+              type="button"
+              className={`sidebar-nav-link${activeTab === 'network' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('network');
+                setSearchParams({ tab: 'network' });
+              }}
+            >
+              Nettverk & tips
+            </button>
+          </div>
+
+          <p className="sidebar-label sidebar-label--spaced">CV og søknader</p>
+          <div className="sidebar-nav-stack">
+            <button
+              type="button"
+              className={`sidebar-nav-link${activeTab === 'applications' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('applications');
+                setSearchParams({});
+              }}
+            >
+              Mine søknader
+            </button>
+            <button
+              type="button"
+              className={`sidebar-nav-link${activeTab === 'cv' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('cv');
+                setSearchParams({});
+              }}
+            >
+              Rediger CV
+            </button>
+            <button
+              type="button"
+              className={`sidebar-nav-link${activeTab === 'cv-preview' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('cv-preview');
+                setSearchParams({});
+              }}
+            >
+              Forhåndsvis CV
+            </button>
+          </div>
+
+          <p className="sidebar-label sidebar-label--spaced">Konto</p>
+          <div className="sidebar-nav-stack">
+            <button
+              type="button"
+              className={`sidebar-nav-link${activeTab === 'notifications' ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab('notifications');
+                setSearchParams({ tab: 'notifications' });
+              }}
+            >
+              Varsler
+            </button>
+          </div>
+
+          <div className="sidebar-nav-divider" role="presentation" />
+          <Link to="/jobs" className="sidebar-nav-link sidebar-nav-link--jobs">
+            Finn jobber
+          </Link>
         </nav>
       </aside>
 
       <main className="dashboard-main">
+        <IncomingFriendRequestsPanel />
+
+        {activeTab === 'public-profile' && (
+          <>
+            <header className="dashboard-header">
+              <div>
+                <h1>Profilside</h1>
+                <p>
+                  Dette er teksten besøkende ser på din{' '}
+                  <Link to="/profil/me">offentlige profil</Link> – adskilt fra CV-en. CV med erfaring
+                  og utdanning ligger på <Link to="/profil/me/cv">CV-siden</Link>.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="button primary"
+                onClick={savePublicProfile}
+                disabled={saving}
+              >
+                {saving ? 'Lagrer…' : 'Lagre profilside'}
+              </button>
+            </header>
+
+            <div className="dashboard-content">
+              <div className="cv-form">
+                <div className="form-group">
+                  <label>Overskrift (valgfritt)</label>
+                  <input
+                    type="text"
+                    value={profile.publicHeadline}
+                    onChange={(e) =>
+                      setProfile({ ...profile, publicHeadline: e.target.value })
+                    }
+                    placeholder="F.eks: Markedskoordinator · Oslo"
+                  />
+                  <small className="form-hint">
+                    Kort linje under navnet – trenger ikke matche stillingstittel i CV.
+                  </small>
+                </div>
+                <div className="form-group">
+                  <label>Om meg (profilside)</label>
+                  <textarea
+                    value={profile.publicIntro}
+                    onChange={(e) =>
+                      setProfile({ ...profile, publicIntro: e.target.value })
+                    }
+                    placeholder="Skriv en kort introduksjon til besøkende (2–5 setninger). Dette er ikke CV-sammendraget – det redigerer du under «Rediger CV»."
+                    rows={6}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* FANE: Mine søknader */}
         {activeTab === 'applications' && (
           <>
@@ -355,37 +566,47 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                 <p>Følg med på statusen til dine jobbsøknader</p>
               </div>
               <Link to="/jobs" className="button primary">
-                🔍 Finn nye jobber
+                Finn nye jobber
               </Link>
             </header>
 
-            <div className="stats-grid">
+            <div className={`stats-grid${loading ? ' stats-grid--pending' : ''}`}>
               <div className="stat-card">
-                <span className="stat-number">{applications.length}</span>
+                <span className="stat-number">{loading ? '–' : applications.length}</span>
                 <span className="stat-label">Totalt søknader</span>
               </div>
               <div className="stat-card">
                 <span className="stat-number">
-                  {applications.filter(a => a.status === 'pending').length}
+                  {loading ? '–' : applications.filter(a => a.status === 'pending').length}
                 </span>
                 <span className="stat-label">Under vurdering</span>
               </div>
               <div className="stat-card">
                 <span className="stat-number">
-                  {applications.filter(a => a.status === 'interview').length}
+                  {loading ? '–' : applications.filter(a => a.status === 'interview').length}
                 </span>
                 <span className="stat-label">Til intervju</span>
               </div>
             </div>
 
-            {/* Varsel om nye meldinger */}
-            {applications.filter(a => a.companyMessage).length > 0 && (
+            {/* Varsel om nye meldinger (kan lukkes; lagres lokalt per søknad-ID) */}
+            {undismissedMessageApps.length > 0 && (
               <div className="interview-alert">
-                <span className="alert-icon">🎉</span>
                 <div className="alert-content">
-                  <strong>Du har {applications.filter(a => a.companyMessage).length} melding(er) fra bedrifter!</strong>
+                  <strong>
+                    Du har {undismissedMessageApps.length} melding(er) fra bedrifter!
+                  </strong>
                   <p>Se nedenfor for detaljer om intervjuinvitasjoner eller annen informasjon.</p>
                 </div>
+                <button
+                  type="button"
+                  className="interview-alert-dismiss"
+                  onClick={dismissCompanyMessagesBanner}
+                  aria-label="Lukk varsel"
+                  title="Skjul varselet (meldingene finnes fortsatt under hver søknad)"
+                >
+                  ×
+                </button>
               </div>
             )}
 
@@ -396,11 +617,11 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                 <p className="loading-text">Laster søknader...</p>
               ) : applications.length === 0 ? (
                 <div className="empty-state">
-                  <span className="empty-icon">📄</span>
+                  <span className="empty-state-graphic" aria-hidden />
                   <h3>Ingen søknader ennå</h3>
                   <p>Du har ikke sendt noen søknader ennå. Finn din drømmejobb!</p>
                   <Link to="/jobs" className="button primary">
-                    🔍 Finn jobber
+                    Finn jobber
                   </Link>
                 </div>
               ) : (
@@ -414,7 +635,13 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                       <div key={application.id} className={`application-card ${hasMessage ? 'has-message' : ''}`}>
                         <div className="application-card-main">
                           <h3>{application.jobTitle}</h3>
-                          <p className="company-name">{application.companyName}</p>
+                          {application.companyId ? (
+                            <Link to={`/bedrift/${application.companyId}`} className="company-name application-company-link">
+                              {application.companyName}
+                            </Link>
+                          ) : (
+                            <p className="company-name">{application.companyName}</p>
+                          )}
                           <p className="application-date">
                             Søkt: {application.appliedAt?.toDate?.()?.toLocaleDateString('nb-NO') || '-'}
                           </p>
@@ -437,7 +664,6 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                         {hasMessage && (
                           <div className="company-message-box">
                             <div className="message-header">
-                              <span className="message-icon">📩</span>
                               <span className="message-title">Melding fra {application.messageSender || application.companyName}</span>
                               {application.messageDate && (
                                 <span className="message-date">
@@ -467,14 +693,17 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
             <header className="dashboard-header">
               <div>
                 <h1>Min CV</h1>
-                <p>Fyll ut din profil - denne brukes når du søker på jobber</p>
+                <p>
+                  Dette innholdet brukes i søknader og på CV-siden – ikke på forsiden av den offentlige
+                  profilen (rediger «Profilside» for det).
+                </p>
               </div>
               <button 
                 className="button primary" 
                 onClick={saveProfile}
                 disabled={saving}
               >
-                {saving ? 'Lagrer...' : '💾 Lagre CV'}
+                {saving ? 'Lagrer...' : 'Lagre CV'}
               </button>
             </header>
 
@@ -486,11 +715,11 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                     className="profile-image-upload"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {profile.profileImage ? (
-                      <img src={profile.profileImage} alt="Profilbilde" />
+                    {displayProfileImage ? (
+                      <img src={displayProfileImage} alt="Profilbilde" />
                     ) : (
                       <div className="upload-placeholder">
-                        <span className="upload-icon">📷</span>
+                        <span className="upload-icon" aria-hidden>+</span>
                         <span>Legg til bilde</span>
                       </div>
                     )}
@@ -500,18 +729,11 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                       </div>
                     )}
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    style={{ display: 'none' }}
-                  />
-                  <p className="image-hint">Klikk for å laste opp profilbilde</p>
+                  <p className="image-hint">Klikk for å laste opp profilbilde (samme som i menyen til venstre)</p>
                 </div>
 
                 {/* Kontaktinformasjon */}
-                <div className="form-section-title">📞 Kontaktinformasjon</div>
+                <div className="form-section-title form-section-title--accent">Kontaktinformasjon</div>
                 
                 <div className="form-row">
                   <div className="form-group">
@@ -556,7 +778,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                 </div>
 
                 {/* Jobbønsker */}
-                <div className="form-section-title">🎯 Jobbønsker</div>
+                <div className="form-section-title form-section-title--accent">Jobbønsker</div>
 
                 <div className="form-group">
                   <label>Ønsket stilling / Yrke</label>
@@ -566,7 +788,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                     onChange={(e) => setProfile({...profile, jobTitle: e.target.value})}
                     placeholder="F.eks: Frontend-utvikler, Markedssjef, Sykepleier"
                   />
-                  <small className="form-hint">AI bruker dette til å tilpasse CV-en din</small>
+                  <small className="form-hint">Brukes i forhåndsvisning og i lokale søknadsmaler</small>
                 </div>
 
                 <div className="form-group">
@@ -580,7 +802,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                 </div>
 
                 {/* Om deg */}
-                <div className="form-section-title">👤 Om deg</div>
+                <div className="form-section-title form-section-title--accent">Om deg</div>
 
                 <div className="form-group">
                   <label>Kort om meg</label>
@@ -635,7 +857,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
             </div>
 
             <div className="tips-section">
-              <h2>💡 Tips for god CV</h2>
+              <h2>Tips for god CV</h2>
               <div className="tips-grid">
                 <div className="tip-card">
                   <h4>Vær konkret</h4>
@@ -659,7 +881,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
           <>
             <header className="dashboard-header">
               <div>
-                <h1>📎 Min CV</h1>
+                <h1>Min CV</h1>
                 <p>Slik ser CV-en din ut for arbeidsgivere</p>
               </div>
               <div className="header-actions">
@@ -667,32 +889,31 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                   className="button secondary"
                   onClick={() => setActiveTab('cv')}
                 >
-                  ✏️ Rediger
+                  Rediger
                 </button>
                 <button 
                   className="button primary"
                   onClick={generateEnhancedCV}
                   disabled={generatingCV}
                 >
-                  {generatingCV ? '✨ Forbedrer...' : '✨ Forbedre med AI'}
+                  {generatingCV ? 'Formatterer…' : 'Strukturer CV (lokalt)'}
                 </button>
               </div>
-              {isAIConfigured() && <p className="ai-powered-by">Drevet av Groq + Llama 3.3</p>}
             </header>
 
             {generatingCV ? (
               <div className="cv-loading">
                 <div className="loading-spinner"></div>
-                <p>AI forbedrer CV-en din...</p>
+                <p>Formatterer CV-en…</p>
               </div>
             ) : (
               <div className="cv-preview-container">
                 <div className="cv-document">
                   {/* Header med navn og bilde */}
                   <div className="cv-header">
-                    {profile.profileImage && (
+                    {displayProfileImage && (
                       <img 
-                        src={profile.profileImage} 
+                        src={displayProfileImage} 
                         alt={fullName}
                         className="cv-profile-image"
                       />
@@ -700,12 +921,12 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
                     <div className="cv-header-text">
                       <h1 className="cv-name">{fullName}</h1>
                       <p className="cv-headline">
-                        {String(enhancedCV?.headline || profile.jobTitle || 'Jobbsøker')}
+                        {String(enhancedCV?.headline || profile.jobTitle || 'Privatperson')}
                       </p>
                       <div className="cv-contact-info">
                         <span>{userData?.email || currentUser?.email}</span>
-                        {profile.phone && <span>📞 {profile.phone}</span>}
-                        {profile.location && <span>📍 {profile.location}</span>}
+                        {profile.phone && <span>{profile.phone}</span>}
+                        {profile.location && <span>{profile.location}</span>}
                       </div>
                       {(profile.linkedIn || profile.portfolio) && (
                         <div className="cv-links">
@@ -799,7 +1020,7 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
 
                 {enhancedCV && (
                   <div className="cv-enhanced-notice">
-                    ✨ CV-en er forbedret med AI for å fremstå mer profesjonell
+                    Strukturert visning (lokalt) – innholdet er ditt; les gjennom før du søker.
                   </div>
                 )}
               </div>
@@ -807,153 +1028,14 @@ Skriv en personlig og engasjerende søknadstekst på 150-200 ord.`
           </>
         )}
 
-        {/* FANE: Søknadstekst-generator */}
-        {activeTab === 'cover-letter' && (
-          <>
-            <header className="dashboard-header">
-              <div>
-                <h1>✍️ Søknadstekst-generator</h1>
-                <p>Bruk AI til å lage personlige søknadstekster</p>
-              </div>
-            </header>
+        {activeTab === 'notifications' && <NotificationSettingsPanel />}
 
-            <div className="dashboard-content">
-              <CoverLetterGenerator 
-                profile={profile} 
-                aiLoading={aiLoading}
-                generateCoverLetter={generateCoverLetter}
-              />
-            </div>
-          </>
+        {activeTab === 'network' && (
+          <div className="dashboard-content dashboard-content--network">
+            <UserNetworkPanel />
+          </div>
         )}
       </main>
-    </div>
-  );
-}
-
-// Komponent for søknadstekst-generator
-function CoverLetterGenerator({ profile, aiLoading, generateCoverLetter }) {
-  const [jobTitle, setJobTitle] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [coverLetterText, setCoverLetterText] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [mode, setMode] = useState('ai'); // 'ai' eller 'manual'
-
-  async function handleGenerate() {
-    if (!jobTitle || !companyName) {
-      toast.warning('Fyll inn stillingstittel og bedriftsnavn');
-      return;
-    }
-
-    if (!profile.summary && !profile.experience && !profile.skills) {
-      toast.info('Tips: Fyll ut CV-en din for bedre søknadstekster');
-    }
-
-    setIsGenerating(true);
-    const text = await generateCoverLetter(jobTitle, companyName);
-    setCoverLetterText(text);
-    setIsGenerating(false);
-  }
-
-  function copyToClipboard() {
-    navigator.clipboard.writeText(coverLetterText);
-    toast.success('Kopiert til utklippstavlen!');
-  }
-
-  return (
-    <div className="cover-letter-generator">
-      {/* Velg modus */}
-      <div className="mode-selector">
-        <button 
-          className={`mode-btn ${mode === 'ai' ? 'active' : ''}`}
-          onClick={() => setMode('ai')}
-        >
-          ✨ Generer med AI
-        </button>
-        <button 
-          className={`mode-btn ${mode === 'manual' ? 'active' : ''}`}
-          onClick={() => setMode('manual')}
-        >
-          ✏️ Skriv / Lim inn egen
-        </button>
-      </div>
-
-      {mode === 'ai' && (
-        <div className="generator-inputs">
-          <div className="form-group">
-            <label>Hvilken stilling søker du på?</label>
-            <input
-              type="text"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-              placeholder="F.eks. Frontend-utvikler"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Hvilken bedrift?</label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="F.eks. TechNorge AS"
-            />
-          </div>
-
-          <button 
-            className="button primary ai-btn"
-            onClick={handleGenerate}
-            disabled={isGenerating || aiLoading}
-          >
-            {isGenerating ? '✨ Genererer...' : '✨ Generer søknadstekst'}
-          </button>
-          <p className="ai-powered-by">Drevet av Groq + Llama 3.3</p>
-
-          {!profile.summary && !profile.experience && (
-            <div className="generator-notice">
-              <p>💡 <strong>Tips:</strong> Fyll ut CV-en din under "Rediger CV"-fanen for at AI-en skal kunne lage mer personlige søknadstekster.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {mode === 'manual' && (
-        <div className="manual-input">
-          <div className="form-group">
-            <label>Lim inn eller skriv din søknadstekst</label>
-            <textarea
-              value={coverLetterText}
-              onChange={(e) => setCoverLetterText(e.target.value)}
-              placeholder="Lim inn din eksisterende søknadstekst her, eller skriv en ny fra bunnen av..."
-              rows={12}
-            />
-          </div>
-          <p className="manual-hint">
-            💡 Du kan lime inn søknadstekster du allerede har skrevet og redigere dem her.
-          </p>
-        </div>
-      )}
-
-      {/* Resultat / Redigering */}
-      {coverLetterText && (
-        <div className="generated-result">
-          <div className="result-header">
-            <h3>{mode === 'ai' ? 'Generert søknadstekst' : 'Din søknadstekst'}</h3>
-            <button className="button small" onClick={copyToClipboard}>
-              📋 Kopier
-            </button>
-          </div>
-          <textarea
-            className="result-textarea"
-            value={coverLetterText}
-            onChange={(e) => setCoverLetterText(e.target.value)}
-            rows={10}
-          />
-          <p className="result-hint">
-            ✏️ Du kan redigere teksten direkte over før du kopierer den.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,38 +1,53 @@
-/* index.css - Global styling for hele appen */
+/* Global styling – variabler brukes i alle sider */
 
-/* Reset - Fjerner standard browser-styling */
+:root {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --color-bg: #f4f1eb;
+  --color-surface: #fffcf7;
+  --color-text: #1c1917;
+  --color-muted: #57534e;
+  --color-border: #e7e5e0;
+  --color-primary: #2c4a42;
+  --color-primary-hover: #21362f;
+  --color-tint: #e6efe9;
+  --color-tint-strong: #cfded6;
+  --color-link-bright: #3d6b5f;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow: 0 2px 8px rgba(28, 25, 23, 0.06);
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Base body-styling */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f9fafb;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
   min-height: 100vh;
-  color: #111827;
-  line-height: 1.5;
+  color: var(--color-text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
   min-height: 100vh;
 }
 
-/* Loading-skjerm */
 .loading-screen {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  font-size: 1.25rem;
-  color: #6b7280;
+  font-size: 1.125rem;
+  color: var(--color-muted);
 }
 
-/* Global link-styling */
 a {
-  color: #059669;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -40,12 +55,10 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Fjern styling fra knapper som ser ut som lenker */
 button {
   font-family: inherit;
 }
 
-/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }

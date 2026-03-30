@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
+import { getAiQuotaStatus, handleAiAction } from './aiHandler.js';
+import { buildRagContextForAction, getEmbeddingsApiKey } from './rag.js';
 
 dotenv.config();
 
@@ -26,6 +28,115 @@ if (serviceAccount) {
 }
 
 const db = serviceAccount ? admin.firestore() : null;
+const groqApiKey = process.env.GROQ_API_KEY || '';
+
+async function requireUser(req, res, next) {
+  if (!serviceAccount) {
+    res.status(503).json({
+      error: 'Firebase Admin er ikke konfigurert – AI-endepunktet er utilgjengelig',
+    });
+    return;
+  }
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) {
+    res.status(401).json({ error: 'Mangler innlogging (Bearer token)' });
+    return;
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.uid = decoded.uid;
+    next();
+  } catch (e) {
+    console.error('verifyIdToken:', e.message);
+    res.status(401).json({ error: 'Ugyldig eller utløpt sesjon' });
+  }
+}
+
+async function requireCompanyForAi(req, res, next) {
+  if (!db) {
+    res.status(503).json({ error: 'Database ikke konfigurert' });
+    return;
+  }
+  try {
+    const snap = await db.collection('users').doc(req.uid).get();
+    const d = snap.exists ? snap.data() : {};
+    if (d.userType !== 'company') {
+      res.status(403).json({
+        error: 'ai_company_only',
+        message: 'Sky-AI er kun for bedriftskontoer. Privatpersoner bruker lokale maler.',
+      });
+      return;
+    }
+    next();
+  } catch (e) {
+    console.error('requireCompanyForAi:', e);
+    res.status(500).json({ error: 'Kunne ikke verifisere bruker' });
+  }
+}
+
+const COMPANY_AI_ACTIONS = ['jobPosting', 'rankApplicants'];
+
+// AI: kun bedrift med aiPass + Groq + valgfri RAG (embeddings)
+app.get('/api/ai/status', requireUser, requireCompanyForAi, async (req, res) => {
+  try {
+    const status = await getAiQuotaStatus(db, req.uid);
+    res.json({ ...status, role: 'company' });
+  } catch (e) {
+    console.error('ai/status:', e);
+    res.status(500).json({ error: 'Kunne ikke hente AI-status' });
+  }
+});
+
+app.post('/api/ai', requireUser, requireCompanyForAi, async (req, res) => {
+  try {
+    if (!groqApiKey) {
+      return res.status(503).json({ error: 'GROQ_API_KEY mangler på serveren' });
+    }
+
+    const { action, payload } = req.body || {};
+    if (!action) {
+      return res.status(400).json({ error: 'Mangler action' });
+    }
+
+    if (!COMPANY_AI_ACTIONS.includes(action)) {
+      return res.status(400).json({ error: 'Ukjent handling' });
+    }
+
+    const quota = await getAiQuotaStatus(db, req.uid);
+    if (!quota.allowed) {
+      return res.status(402).json({
+        error: 'ai_no_access',
+        message:
+          'AI krever aktiv tilgang (betaling eller administrator). Det finnes ingen gratis prøverunder.',
+        ...quota,
+      });
+    }
+
+    const embedKey = getEmbeddingsApiKey();
+    const ragContext = await buildRagContextForAction(db, {
+      uid: req.uid,
+      action,
+      payload: payload || {},
+      embedApiKey: embedKey,
+    });
+
+    const mergedPayload = { ...(payload || {}), ragContext };
+    const result = await handleAiAction(
+      { action, payload: mergedPayload },
+      { groqApiKey },
+    );
+
+    const nextQuota = await getAiQuotaStatus(db, req.uid);
+    res.json({ ...result, quota: nextQuota, ragUsed: Boolean(ragContext?.trim()) });
+  } catch (e) {
+    const status = e.status || 500;
+    console.error('api/ai:', e);
+    res.status(status).json({
+      error: e.message || 'AI-kall feilet',
+    });
+  }
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

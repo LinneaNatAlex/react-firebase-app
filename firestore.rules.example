@@ -1,0 +1,59 @@
+// Eksempel på Firestore-regler for sosiale funksjoner og søk.
+// Kopier til Firebase Console → Firestore → Regler, eller bruk firebase deploy med rules-fil.
+//
+// Tilpass etter behov; test alltid i emulatore før produksjon.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /companyProfiles/{companyId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.auth.uid == companyId;
+    }
+
+    match /companyFollowers/{companyId}/users/{followerUid} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == followerUid;
+    }
+
+    match /companyToCompanyFollows/{companyId}/following/{targetId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == companyId;
+    }
+
+    match /users/{userId}/followedCompanies/{companyId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/friends/{friendUid} {
+      allow read: if true;
+      allow create, delete: if request.auth != null &&
+        (request.auth.uid == userId || request.auth.uid == friendUid);
+    }
+
+    match /friendRequests/{pairKey} {
+      allow read: if request.auth != null &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
+      allow delete: if request.auth != null &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null &&
+        request.resource.data.actorId == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}

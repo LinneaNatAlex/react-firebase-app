@@ -5,15 +5,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  background: linear-gradient(145deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   padding: 2rem;
 }
 
 .auth-container {
-  background: white;
+  background: var(--color-surface);
   padding: 3rem;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow);
   width: 100%;
   max-width: 520px;
 }
@@ -23,10 +24,13 @@
 }
 
 .auth-container h1 {
+  font-family: var(--font-display);
   text-align: center;
-  color: #111827;
-  font-size: 2rem;
+  color: var(--color-text);
+  font-size: 1.85rem;
+  font-weight: 600;
   margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .auth-subtitle {
@@ -54,15 +58,24 @@
 }
 
 .type-card:hover {
-  border-color: #059669;
+  border-color: var(--color-primary);
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(5, 150, 105, 0.15);
 }
 
 .type-icon {
-  font-size: 3rem;
-  display: block;
-  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: var(--color-tint, rgba(230, 239, 233, 0.85));
+  color: var(--color-primary, #2c4a42);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .type-card h3 {
@@ -91,7 +104,7 @@
 
 .type-card li::before {
   content: "✓ ";
-  color: #10b981;
+  color: var(--color-link-bright);
 }
 
 /* ===== TILBAKE-KNAPP ===== */
@@ -141,7 +154,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #059669;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
@@ -179,7 +192,7 @@
 
 /* ===== SUBMIT-KNAPP ===== */
 .auth-button {
-  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  background: linear-gradient(145deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   color: white;
   border: none;
   padding: 1rem;
@@ -210,7 +223,7 @@
 }
 
 .forgot-link {
-  color: #059669;
+  color: var(--color-primary);
   font-size: 0.9rem;
   text-decoration: none;
 }
@@ -226,7 +239,7 @@
 }
 
 .auth-footer a {
-  color: #059669;
+  color: var(--color-primary);
   text-decoration: none;
   font-weight: 500;
 }

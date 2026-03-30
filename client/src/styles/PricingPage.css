@@ -1,0 +1,184 @@
+/* Priser / AI-tilgang – samme tokens som resten av appen */
+
+.pricing-page {
+  min-height: calc(100vh - 60px);
+  background: var(--color-bg);
+  padding-bottom: 3rem;
+}
+
+.pricing-hero {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.pricing-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.pricing-hero .lead {
+  color: var(--color-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.pricing-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.pricing-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 2.25rem 0 1rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pricing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.pricing-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.pricing-card.featured {
+  border-color: var(--color-primary, #2563eb);
+  box-shadow: 0 0 0 1px var(--color-primary, #2563eb);
+}
+
+.pricing-card h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: var(--color-text);
+}
+
+.pricing-card .price {
+  font-size: 1.65rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
+}
+
+.pricing-card .price-note {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin-bottom: 1rem;
+}
+
+.pricing-card ul {
+  margin: 0 0 1.25rem;
+  padding-left: 1.15rem;
+  color: var(--color-muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.pricing-card .button {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 0.75rem 0 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.cost-table th,
+.cost-table td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cost-table th {
+  background: var(--color-bg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cost-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cost-table td:last-child {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+}
+
+.pricing-callout {
+  margin-top: 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.pricing-callout strong {
+  color: var(--color-text);
+}
+
+.pricing-faq {
+  margin-top: 0.5rem;
+}
+
+.pricing-faq details {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.65rem;
+  background: var(--color-surface);
+}
+
+.pricing-faq summary {
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.pricing-faq p {
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.pricing-footnote {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin-top: 2rem;
+  line-height: 1.5;
+}

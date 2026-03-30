@@ -1,20 +1,58 @@
 // Hovedfil - setter opp alle sider og beskytter de som krever innlogging
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ToastProvider } from './components/Toast';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ToastProvider } from "./components/Toast";
 
-import Navbar from './components/Navbar';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import CompanyDashboard from './pages/CompanyDashboard';
-import UserDashboard from './pages/UserDashboard';
-import JobsPage from './pages/JobsPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import AdminDashboard from './pages/AdminDashboard';
+import Navbar from "./components/Navbar";
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import CompanyDashboard from "./pages/CompanyDashboard";
+import UserDashboard from "./pages/UserDashboard";
+import JobsPage from "./pages/JobsPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import PricingPage from "./pages/PricingPage";
+import CompanyPublicProfilePage from "./pages/CompanyPublicProfilePage";
+import CompanyProfileEditPage from "./pages/CompanyProfileEditPage";
+import MagazinePage from "./pages/MagazinePage";
+import PersonPublicProfilePage from "./pages/PersonPublicProfilePage";
+import PersonPublicCvPage from "./pages/PersonPublicCvPage";
+import SearchPage from "./pages/SearchPage";
 
-import './index.css';
+import "./index.css";
+
+// /profil/me → redirect til innlogget brukers offentlige profil
+function ProfilMeRoute() {
+  const { currentUser, userData, loading } = useAuth();
+
+  if (loading) {
+    return <div className="loading-screen">Laster...</div>;
+  }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (userData?.userType === "company") {
+    return <Navigate to={`/bedrift/${currentUser.uid}`} replace />;
+  }
+  return <Navigate to={`/profil/${currentUser.uid}`} replace />;
+}
+
+function ProfilMeCvRoute() {
+  const { currentUser, userData, loading } = useAuth();
+
+  if (loading) {
+    return <div className="loading-screen">Laster...</div>;
+  }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (userData?.userType === "company") {
+    return <Navigate to={`/bedrift/${currentUser.uid}`} replace />;
+  }
+  return <Navigate to={`/profil/${currentUser.uid}/cv`} replace />;
+}
 
 // Beskytter sider som krever innlogging
 // Sender bruker til login hvis de ikke er logget inn
@@ -32,7 +70,7 @@ function ProtectedRoute({ children, requiredUserType }) {
 
   // Feil brukertype? Send til riktig dashboard
   if (requiredUserType && userData?.userType !== requiredUserType) {
-    if (userData?.userType === 'company') {
+    if (userData?.userType === "company") {
       return <Navigate to="/dashboard/company" />;
     } else {
       return <Navigate to="/dashboard/user" />;
@@ -52,7 +90,7 @@ function HomeRoute() {
 
   // Innlogget? Send til riktig dashboard
   if (currentUser && userData) {
-    if (userData.userType === 'company') {
+    if (userData.userType === "company") {
       return <Navigate to="/dashboard/company" />;
     } else {
       return <Navigate to="/dashboard/user" />;
@@ -73,7 +111,7 @@ function AuthRoute({ children }) {
 
   // Allerede innlogget? Send til dashboard
   if (currentUser && userData) {
-    if (userData.userType === 'company') {
+    if (userData.userType === "company") {
       return <Navigate to="/dashboard/company" />;
     } else {
       return <Navigate to="/dashboard/user" />;
@@ -87,32 +125,66 @@ function AppContent() {
   return (
     <BrowserRouter>
       <Navbar />
-      
+
       <Routes>
         {/* Offentlige sider - omdirigerer innloggede brukere */}
         <Route path="/" element={<HomeRoute />} />
-        <Route path="/login" element={<AuthRoute><LoginPage /></AuthRoute>} />
-        <Route path="/register" element={<AuthRoute><RegisterPage /></AuthRoute>} />
+        <Route
+          path="/login"
+          element={
+            <AuthRoute>
+              <LoginPage />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <AuthRoute>
+              <RegisterPage />
+            </AuthRoute>
+          }
+        />
         <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/sok" element={<SearchPage />} />
+        <Route
+          path="/bedrift/:companyId"
+          element={<CompanyPublicProfilePage />}
+        />
+        <Route path="/profil/me" element={<ProfilMeRoute />} />
+        <Route path="/profil/me/cv" element={<ProfilMeCvRoute />} />
+        <Route path="/profil/:userId/cv" element={<PersonPublicCvPage />} />
+        <Route path="/profil/:userId" element={<PersonPublicProfilePage />} />
+        <Route path="/priser" element={<PricingPage />} />
+        <Route path="/utblikk" element={<MagazinePage />} />
+        <Route path="/jobbposten" element={<Navigate to="/utblikk" replace />} />
 
         {/* Kun for bedrifter */}
-        <Route 
-          path="/dashboard/company" 
+        <Route
+          path="/dashboard/company"
           element={
             <ProtectedRoute requiredUserType="company">
               <CompanyDashboard />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/dashboard/company/profil"
+          element={
+            <ProtectedRoute requiredUserType="company">
+              <CompanyProfileEditPage />
+            </ProtectedRoute>
+          }
         />
 
-        {/* Kun for jobbsøkere */}
-        <Route 
-          path="/dashboard/user" 
+        {/* Privatkonto (userType jobseeker i Firestore) */}
+        <Route
+          path="/dashboard/user"
           element={
             <ProtectedRoute requiredUserType="jobseeker">
               <UserDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Admin-sider (skjult fra vanlige brukere) */}
@@ -136,4 +208,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
