@@ -64,14 +64,17 @@ function ProtectedRoute({ children, requiredUserType }) {
     return <div className="loading-screen">Laster...</div>;
   }
 
-  // Ikke innlogget? Send til login
   if (!currentUser) {
     return <Navigate to="/login" />;
   }
 
-  // Feil brukertype? Send til riktig dashboard
-  if (requiredUserType && userData?.userType !== requiredUserType) {
-    if (userData?.userType === "company") {
+  // Profil ikke lastet eller mangler (ny Google-bruker uten Firestore-dokument)
+  if (!userData) {
+    return <Navigate to="/register?social=true" replace />;
+  }
+
+  if (requiredUserType && userData.userType !== requiredUserType) {
+    if (userData.userType === "company") {
       return <Navigate to="/dashboard/company" />;
     } else {
       return <Navigate to="/dashboard/user" />;
@@ -89,7 +92,7 @@ function HomeRoute() {
     return <div className="loading-screen">Laster...</div>;
   }
 
-  // Innlogget? Send til riktig dashboard
+  // Innlogget med full profil i Firestore → dashboard
   if (currentUser && userData) {
     if (userData.userType === "company") {
       return <Navigate to="/dashboard/company" />;
@@ -98,7 +101,11 @@ function HomeRoute() {
     }
   }
 
-  // Ikke innlogget? Vis landingssiden
+  // Firebase-session (f.eks. ny Google) men ingen users/{uid}-rad ennå
+  if (currentUser && !userData) {
+    return <Navigate to="/register?social=true" replace />;
+  }
+
   return <LandingPage />;
 }
 
@@ -110,13 +117,17 @@ function AuthRoute({ children }) {
     return <div className="loading-screen">Laster...</div>;
   }
 
-  // Allerede innlogget? Send til dashboard
   if (currentUser && userData) {
     if (userData.userType === "company") {
       return <Navigate to="/dashboard/company" />;
     } else {
       return <Navigate to="/dashboard/user" />;
     }
+  }
+
+  // Innlogget i Firebase men ikke i Firestore → fullfør registrering (typisk Google)
+  if (currentUser && !userData) {
+    return <Navigate to="/register?social=true" replace />;
   }
 
   return children;

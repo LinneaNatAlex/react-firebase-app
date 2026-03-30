@@ -8,6 +8,7 @@ import {
   buildCompanySearchNameLower,
   buildUserSearchNameLower,
 } from "../utils/searchName";
+import { messageForGoogleAuthError } from "../utils/googleAuthErrors";
 import "../styles/Auth.css";
 
 function RegisterPage() {
@@ -69,11 +70,12 @@ function RegisterPage() {
       // Ny bruker - siden viser automatisk brukertype-valg
     } catch (error) {
       console.error("Google registrering feilet:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        setError("Registrering avbrutt");
-      } else {
-        setError("Kunne ikke registrere med Google. Prøv igjen.");
-      }
+      const specific = messageForGoogleAuthError(error, {
+        cancelMessage: "Registrering avbrutt",
+      });
+      setError(
+        specific ?? "Kunne ikke registrere med Google. Prøv igjen.",
+      );
     }
     setLoading(false);
   }

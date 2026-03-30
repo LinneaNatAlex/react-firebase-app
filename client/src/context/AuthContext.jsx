@@ -156,9 +156,9 @@ export function AuthProvider({ children }) {
     loading,
   };
 
+  // Ikke skjul hele appen til auth er klar – da kjører ikke getRedirectResult etter Google
+  // i tide, og brukere med Firebase-session men uten Firestore-rad ble hengende på /login.
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 }

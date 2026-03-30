@@ -8,6 +8,7 @@ import {
   getRedirectResult,
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
+import { messageForGoogleAuthError } from "../utils/googleAuthErrors";
 import "../styles/Auth.css";
 
 // Din admin-epost - kun denne kan logge inn som admin
@@ -56,11 +57,10 @@ function AdminLoginPage() {
       navigate("/admin/dashboard");
     } catch (error) {
       console.error("Admin innlogging feilet:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        setError("Innlogging avbrutt");
-      } else {
-        setError("Kunne ikke logge inn");
-      }
+      const specific = messageForGoogleAuthError(error, {
+        cancelMessage: "Innlogging avbrutt",
+      });
+      setError(specific ?? "Kunne ikke logge inn");
     }
     setLoading(false);
   }
