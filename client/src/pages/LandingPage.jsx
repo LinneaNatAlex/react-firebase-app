@@ -140,7 +140,7 @@ function LandingPage() {
               <h4>Produkt</h4>
               <Link to="/jobs">Ledige stillinger</Link>
               <Link to={MAGAZINE_PATH}>{MAGAZINE_NAME}</Link>
-              <Link to="/priser">Priser (bedrift)</Link>
+              <Link to="/priser">Priser</Link>
               <Link to="/register">Registrering</Link>
               <Link to="/login">Logg inn</Link>
             </div>

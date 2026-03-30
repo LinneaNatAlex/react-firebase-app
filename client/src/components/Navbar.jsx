@@ -45,7 +45,7 @@ function Navbar() {
       <div className="navbar-links">
         <Link to="/jobs">Finn jobber</Link>
         <Link to={MAGAZINE_PATH}>{MAGAZINE_NAME}</Link>
-        <Link to="/priser">Priser (bedrift)</Link>
+        <Link to="/priser">Priser</Link>
 
         {currentUser ? (
           <>
