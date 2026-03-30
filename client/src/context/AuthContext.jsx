@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -66,14 +67,22 @@ export function AuthProvider({ children }) {
     return signInWithEmailAndPassword(auth, email, password);
   }
 
-  // Google-innlogging
+  // Google-innlogging – redirect i produksjon (popup feiler ofte på Netlify / tredjeparts-cookies)
   async function loginWithGoogle() {
+    if (import.meta.env.PROD) {
+      await signInWithRedirect(auth, googleProvider);
+      return { redirecting: true };
+    }
+
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
-
-    // Sjekk om brukeren finnes i databasen fra før
     const userDoc = await getDoc(doc(db, "users", user.uid));
-    return { user, isNewUser: !userDoc.exists() };
+    const exists = userDoc.exists();
+    return {
+      user,
+      isNewUser: !exists,
+      userType: exists ? userDoc.data().userType : null,
+    };
   }
 
   // Fullfør sosial innlogging med valgt brukertype

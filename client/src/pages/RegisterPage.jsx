@@ -55,8 +55,16 @@ function RegisterPage() {
 
       const result = await loginWithGoogle();
 
+      if (result.redirecting) {
+        return;
+      }
+
       if (!result.isNewUser) {
-        navigate("/dashboard/company");
+        navigate(
+          result.userType === "company"
+            ? "/dashboard/company"
+            : "/dashboard/user",
+        );
       }
       // Ny bruker - siden viser automatisk brukertype-valg
     } catch (error) {

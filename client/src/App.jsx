@@ -20,6 +20,7 @@ import MagazinePage from "./pages/MagazinePage";
 import PersonPublicProfilePage from "./pages/PersonPublicProfilePage";
 import PersonPublicCvPage from "./pages/PersonPublicCvPage";
 import SearchPage from "./pages/SearchPage";
+import GoogleRedirectHandler from "./components/GoogleRedirectHandler";
 
 import "./index.css";
 
@@ -124,6 +125,7 @@ function AuthRoute({ children }) {
 function AppContent() {
   return (
     <BrowserRouter>
+      <GoogleRedirectHandler />
       <Navbar />
 
       <Routes>

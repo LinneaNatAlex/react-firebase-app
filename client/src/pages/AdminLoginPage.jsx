@@ -1,8 +1,12 @@
 // Admin-innlogging - kun for deg som eier plattformen
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithPopup } from "firebase/auth";
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+} from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import "../styles/Auth.css";
 
@@ -14,10 +18,29 @@ function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (!result?.user) return;
+        if (result.user.email !== ADMIN_EMAIL) {
+          setError("Du har ikke admin-tilgang");
+          return;
+        }
+        localStorage.setItem("isAdmin", "true");
+        navigate("/admin/dashboard", { replace: true });
+      })
+      .catch((e) => console.warn("Admin getRedirectResult:", e));
+  }, [navigate]);
+
   async function handleGoogleLogin() {
     try {
       setError("");
       setLoading(true);
+
+      if (import.meta.env.PROD) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
 
       const result = await signInWithPopup(auth, googleProvider);
 

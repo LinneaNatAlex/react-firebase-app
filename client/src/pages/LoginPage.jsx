@@ -49,11 +49,19 @@ function LoginPage() {
       setLoading(true);
       
       const result = await loginWithGoogle();
-      
+
+      if (result.redirecting) {
+        return;
+      }
+
       if (result.isNewUser) {
         navigate("/register?social=true");
       } else {
-        navigate("/dashboard/company");
+        navigate(
+          result.userType === "company"
+            ? "/dashboard/company"
+            : "/dashboard/user",
+        );
       }
     } catch (error) {
       console.error("Google innlogging feilet:", error);
