@@ -1,5 +1,6 @@
 // Hovedfil - setter opp alle sider og beskytter de som krever innlogging
 
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ToastProvider } from "./components/Toast";
@@ -17,6 +18,9 @@ import PricingPage from "./pages/PricingPage";
 import CompanyPublicProfilePage from "./pages/CompanyPublicProfilePage";
 import CompanyProfileEditPage from "./pages/CompanyProfileEditPage";
 import MagazinePage from "./pages/MagazinePage";
+import MagazineArticlePage from "./pages/MagazineArticlePage";
+import MagazineStaffDashboardPage from "./pages/MagazineStaffDashboardPage";
+import MagazineEditorPage from "./pages/MagazineEditorPage";
 import PersonPublicProfilePage from "./pages/PersonPublicProfilePage";
 import PersonPublicCvPage from "./pages/PersonPublicCvPage";
 import SearchPage from "./pages/SearchPage";
@@ -121,6 +125,44 @@ function AuthRoute({ children }) {
   return children;
 }
 
+/** Innlogget bruker med rolle journalist eller redaktør i Utblikk (henter fersk rolle fra Firestore) */
+function NewspaperStaffRoute({ children }) {
+  const { currentUser, loading, refreshUserData } = useAuth();
+  const [ready, setReady] = useState(false);
+  const [staffRole, setStaffRole] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (loading) return;
+      if (!currentUser) {
+        setStaffRole(null);
+        setReady(true);
+        return;
+      }
+      const merged = await refreshUserData();
+      if (!cancelled) {
+        setStaffRole(merged?.newspaperRole ?? null);
+        setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, currentUser, refreshUserData]);
+
+  if (loading || !ready) {
+    return <div className="loading-screen">Laster...</div>;
+  }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  if (staffRole !== "journalist" && staffRole !== "editor") {
+    return <Navigate to="/utblikk" replace />;
+  }
+  return children;
+}
+
 function AppContent() {
   return (
     <BrowserRouter>
@@ -156,6 +198,23 @@ function AppContent() {
         <Route path="/profil/:userId/cv" element={<PersonPublicCvPage />} />
         <Route path="/profil/:userId" element={<PersonPublicProfilePage />} />
         <Route path="/priser" element={<PricingPage />} />
+        <Route
+          path="/utblikk/redaksjon"
+          element={
+            <NewspaperStaffRoute>
+              <MagazineStaffDashboardPage />
+            </NewspaperStaffRoute>
+          }
+        />
+        <Route
+          path="/utblikk/rediger/:articleId"
+          element={
+            <NewspaperStaffRoute>
+              <MagazineEditorPage />
+            </NewspaperStaffRoute>
+          }
+        />
+        <Route path="/utblikk/sak/:slug" element={<MagazineArticlePage />} />
         <Route path="/utblikk" element={<MagazinePage />} />
         <Route path="/jobbposten" element={<Navigate to="/utblikk" replace />} />
 

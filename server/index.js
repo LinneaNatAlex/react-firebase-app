@@ -2,7 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
-import { getAiQuotaStatus, handleAiAction } from './aiHandler.js';
+import {
+  getAiQuotaStatus,
+  handleAiAction,
+  resolveLlmConfig,
+} from './aiHandler.js';
 import { buildRagContextForAction, getEmbeddingsApiKey } from './rag.js';
 
 dotenv.config();
@@ -28,7 +32,10 @@ if (serviceAccount) {
 }
 
 const db = serviceAccount ? admin.firestore() : null;
-const groqApiKey = process.env.GROQ_API_KEY || '';
+
+function getLlmConfig() {
+  return resolveLlmConfig();
+}
 
 async function requireUser(req, res, next) {
   if (!serviceAccount) {
@@ -77,11 +84,16 @@ async function requireCompanyForAi(req, res, next) {
 
 const COMPANY_AI_ACTIONS = ['jobPosting', 'rankApplicants'];
 
-// AI: kun bedrift med aiPass + Groq + valgfri RAG (embeddings)
+// AI: bedrift med aiPass + LLM; valgfri RAG (embeddings) fra utlyste stillinger + stillingsbibliotek ved jobPosting
 app.get('/api/ai/status', requireUser, requireCompanyForAi, async (req, res) => {
   try {
     const status = await getAiQuotaStatus(db, req.uid);
-    res.json({ ...status, role: 'company' });
+    const llm = getLlmConfig();
+    res.json({
+      ...status,
+      role: 'company',
+      llmConfigured: Boolean(llm.apiKey && llm.baseUrl),
+    });
   } catch (e) {
     console.error('ai/status:', e);
     res.status(500).json({ error: 'Kunne ikke hente AI-status' });
@@ -90,8 +102,12 @@ app.get('/api/ai/status', requireUser, requireCompanyForAi, async (req, res) => 
 
 app.post('/api/ai', requireUser, requireCompanyForAi, async (req, res) => {
   try {
-    if (!groqApiKey) {
-      return res.status(503).json({ error: 'GROQ_API_KEY mangler på serveren' });
+    const llm = getLlmConfig();
+    if (!llm.apiKey || !llm.baseUrl) {
+      return res.status(503).json({
+        error:
+          'LLM er ikke konfigurert. Sett LLM_API_KEY + LLM_BASE_URL (eller GROQ_API_KEY for Groq) på serveren.',
+      });
     }
 
     const { action, payload } = req.body || {};
@@ -122,10 +138,7 @@ app.post('/api/ai', requireUser, requireCompanyForAi, async (req, res) => {
     });
 
     const mergedPayload = { ...(payload || {}), ragContext };
-    const result = await handleAiAction(
-      { action, payload: mergedPayload },
-      { groqApiKey },
-    );
+    const result = await handleAiAction({ action, payload: mergedPayload }, llm);
 
     const nextQuota = await getAiQuotaStatus(db, req.uid);
     res.json({ ...result, quota: nextQuota, ragUsed: Boolean(ragContext?.trim()) });

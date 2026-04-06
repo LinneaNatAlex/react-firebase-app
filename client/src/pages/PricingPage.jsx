@@ -65,8 +65,8 @@ export default function PricingPage() {
       <div className="pricing-container">
         <h2 className="pricing-section-title">Privatpersoner – lokale maler</h2>
         <div className="pricing-callout" style={{ marginTop: "0.5rem" }}>
-          <strong>Søknad og CV-hjelp skjer lokalt</strong> – uten Groq og uten
-          betaling. Sky-AI er ikke en del av privatkontoen her.
+          <strong>Søknad og CV-hjelp skjer lokalt</strong> – uten sky-modell og
+          uten betaling. Sky-AI er ikke en del av privatkontoen her.
         </div>
 
         <h2 className="pricing-section-title">RAG for bedrifter (valgfritt)</h2>
@@ -76,6 +76,11 @@ export default function PricingPage() {
           <strong> bedriftens egne tidligere annonser</strong> som
           stil-referanse (ikke ordrett kopiering). Dette er kun relevant for
           bedrifter som har kjøpt AI-tilgang.
+        </p>
+
+        <p className="template-hint" style={{ lineHeight: 1.65 }}>
+          <strong>Språkmodell for bedrift:</strong> Velges på serveren (OpenAI-kompatibel API). Eksempler: Groq, Google Gemini, OpenRouter, Together, eller lokal{" "}
+          <code>Ollama</code> (gratis etter oppsett på egen maskin/VPS).
         </p>
 
         <h2 className="pricing-section-title">
@@ -269,7 +274,7 @@ export default function PricingPage() {
           <details>
             <summary>Må privatpersoner betale for AI?</summary>
             <p>
-              Nei. De bruker lokale maler. Sky-AI (Groq) er bare for bedrifter
+              Nei. De bruker lokale maler. Sky-AI er bare for bedrifter
               som har kjøpt tilgang.
             </p>
           </details>
@@ -281,7 +286,7 @@ export default function PricingPage() {
             </p>
           </details>
           <details>
-            <summary>Er Groq dyrt?</summary>
+            <summary>Er sky-AI dyrt?</summary>
             <p>
               For små modeller er det vanligvis ikke det som driver kostnaden –
               volum og valg av stor modell er det som merkes på regningen.

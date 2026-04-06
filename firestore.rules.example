@@ -7,9 +7,82 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function newspaperRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.newspaperRole
+        : null;
+    }
+
+    function isNewspaperStaff() {
+      return request.auth != null && newspaperRole() in ['journalist', 'editor'];
+    }
+
+    function isNewspaperEditor() {
+      return request.auth != null && newspaperRole() == 'editor';
+    }
+
+    // Utblikk-artikler: publiserte er lesbare for alle; kladder for forfatter eller redaktør.
+    // Journalist kan kun oppdatere/slette egne kladder (status forblir draft). Publisering kun for redaktør.
+    match /magazineArticles/{articleId} {
+      allow read: if resource.data.status == 'published' ||
+        (request.auth != null && (
+          resource.data.authorId == request.auth.uid ||
+          isNewspaperEditor()
+        ));
+
+      allow create: if request.auth != null &&
+        request.resource.data.authorId == request.auth.uid &&
+        isNewspaperStaff() &&
+        request.resource.data.status == 'draft';
+
+      // Redaktør/journalist-oppdateringer ELLER anonym +1 visning (kun viewCount endres)
+      allow update: if request.auth != null && (
+        isNewspaperEditor() ||
+        (
+          resource.data.authorId == request.auth.uid &&
+          isNewspaperStaff() &&
+          resource.data.status == 'draft' &&
+          request.resource.data.status == 'draft'
+        )
+      ) || (
+        resource.data.status == 'published' &&
+        request.resource.data.viewCount == resource.data.get('viewCount', 0) + 1 &&
+        request.resource.data.title == resource.data.title &&
+        request.resource.data.slug == resource.data.slug &&
+        request.resource.data.bodyHtml == resource.data.bodyHtml &&
+        request.resource.data.excerpt == resource.data.excerpt &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.authorId == resource.data.authorId &&
+        request.resource.data.publishedAt == resource.data.publishedAt &&
+        request.resource.data.get('coverImageUrl', '') == resource.data.get('coverImageUrl', '') &&
+        request.resource.data.get('authorName', '') == resource.data.get('authorName', '')
+      );
+
+      allow delete: if request.auth != null && (
+        isNewspaperEditor() ||
+        (
+          resource.data.authorId == request.auth.uid &&
+          isNewspaperStaff() &&
+          resource.data.status == 'draft'
+        )
+      );
+    }
+
     match /companyProfiles/{companyId} {
       allow read: if true;
       allow create, update, delete: if request.auth != null && request.auth.uid == companyId;
+    }
+
+    // Bedriftens stillingsbibliotek (egen lagret tekst – ikke AI)
+    match /companyJobLibrary/{itemId} {
+      allow read: if request.auth != null && resource.data.companyId == request.auth.uid;
+      allow create: if request.auth != null &&
+        request.resource.data.companyId == request.auth.uid &&
+        request.resource.data.companyId is string &&
+        request.resource.data.title is string &&
+        request.resource.data.description is string;
+      allow update: if request.auth != null && resource.data.companyId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.companyId == request.auth.uid;
     }
 
     match /companyFollowers/{companyId}/users/{followerUid} {

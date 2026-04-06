@@ -1,4 +1,4 @@
-// AI via backend (Groq) – kun bedrifter med tilgang. Lokale maler i freeTemplates.js
+// AI via backend (OpenAI-kompatibel LLM) – kun bedrifter med tilgang. Lokale maler i freeTemplates.js
 
 export { postAi, getAiApiBase } from './aiApi';
 export {

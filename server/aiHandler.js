@@ -1,21 +1,51 @@
 /**
- * Groq for bedrifter: stillingsannonse + søkerrangering.
+ * Sky-AI for bedrifter: stillingsannonse + søkerrangering (OpenAI-kompatibel chat).
  * AI krever aiPass=true (betaling / admin) – ingen gratis forsøk.
- * RAG: payload.ragContext når OPENAI_API_KEY er satt (se rag.js).
+ * Stillingsbibliotek + utlyste stillinger kan også indekseres til RAG (se server/rag.js) når AI brukes.
+ *
+ * Leverandør velges med miljøvariabler (se resolveLlmConfig nedenfor).
  */
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const DEFAULT_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+function trimSlash(s) {
+  return String(s || '').replace(/\/+$/, '');
+}
 
-async function groqChat(apiKey, messages, options = {}) {
-  const res = await fetch(GROQ_URL, {
+/**
+ * Støtter LLM_* (anbefalt) eller legacy GROQ_*.
+ * Eksempler:
+ * - Groq: GROQ_API_KEY (+ valgfritt GROQ_MODEL)
+ * - Google Gemini (OpenAI-kompatibel): LLM_API_KEY, LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai, LLM_MODEL=gemini-2.0-flash
+ * - OpenRouter / Together / DeepInfra: LLM_API_KEY + LLM_BASE_URL + LLM_MODEL
+ * - Lokal Ollama: LLM_BASE_URL=http://127.0.0.1:11434/v1, LLM_API_KEY=ollama (dummy), LLM_MODEL=llama3.2
+ */
+export function resolveLlmConfig() {
+  const apiKey = (process.env.LLM_API_KEY || process.env.GROQ_API_KEY || '').trim();
+  const explicitBase = trimSlash(process.env.LLM_BASE_URL || '');
+  const groqOnly =
+    Boolean((process.env.GROQ_API_KEY || '').trim()) &&
+    !(process.env.LLM_API_KEY || '').trim();
+  const baseUrl =
+    explicitBase ||
+    (groqOnly ? 'https://api.groq.com/openai/v1' : '');
+  const model = (
+    process.env.LLM_MODEL ||
+    process.env.GROQ_MODEL ||
+    'llama-3.1-8b-instant'
+  ).trim();
+  return { apiKey, baseUrl, model };
+}
+
+async function openAiCompatibleChat(messages, options = {}, llm = {}) {
+  const { apiKey, baseUrl, model } = llm;
+  const url = `${trimSlash(baseUrl)}/chat/completions`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: options.model || DEFAULT_MODEL,
+      model: options.model || model,
       messages,
       temperature: options.temperature ?? 0.5,
       max_tokens: options.max_tokens ?? 2048,
@@ -23,7 +53,8 @@ async function groqChat(apiKey, messages, options = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg = data?.error?.message || res.statusText || 'Groq-feil';
+    const msg =
+      data?.error?.message || data?.message || res.statusText || 'LLM-feil';
     throw new Error(msg);
   }
   const text = data?.choices?.[0]?.message?.content;
@@ -73,7 +104,7 @@ function buildJobPostingPrompt(payload) {
     ? `\nOm bedriften (fast tekst fra arbeidsgiver – bruk som utgangspunkt; ikke finn på nye fakta utover dette og feltene over):\n${about.slice(0, 6000)}`
     : '';
   const ragBlock = ragContext?.trim()
-    ? `\n\nTidligere stillingstekster fra samme bedrift (bruk som stil og tone – ikke kopier ordrett; ikke finn på fakta som ikke finnes i oppgaven over):\n${ragContext.trim().slice(0, 12000)}`
+    ? `\n\nTidligere stillingstekster fra samme bedrift (utdrag fra egne annonser/bibliotek – bruk som stil og tone; ikke kopier ordrett; ikke finn på fakta som ikke finnes i oppgaven over):\n${ragContext.trim().slice(0, 12000)}`
     : '';
   return [
     {
@@ -146,7 +177,7 @@ function safeParseJson(text, label) {
   }
 }
 
-export async function handleAiAction({ action, payload }, { groqApiKey }) {
+export async function handleAiAction({ action, payload }, llm) {
   const builders = {
     jobPosting: () => buildJobPostingPrompt(payload),
     rankApplicants: () => buildRankPrompt(payload),
@@ -159,10 +190,14 @@ export async function handleAiAction({ action, payload }, { groqApiKey }) {
   }
 
   const messages = build();
-  const text = await groqChat(groqApiKey, messages, {
-    temperature: action === 'rankApplicants' ? 0.2 : 0.5,
-    max_tokens: action === 'rankApplicants' ? 4096 : 2048,
-  });
+  const text = await openAiCompatibleChat(
+    messages,
+    {
+      temperature: action === 'rankApplicants' ? 0.2 : 0.5,
+      max_tokens: action === 'rankApplicants' ? 4096 : 2048,
+    },
+    llm,
+  );
 
   if (action === 'rankApplicants') {
     const arr = safeParseJson(text, 'rankApplicants');

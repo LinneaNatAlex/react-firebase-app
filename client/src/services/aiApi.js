@@ -1,4 +1,4 @@
-// Kaller backend /api/ai (Groq). API-nøkkel ligger kun på serveren. Kun bedrift med aiPass.
+// Kaller backend /api/ai. API-nøkkel ligger kun på serveren. Kun bedrift med aiPass.
 
 export function getAiApiBase() {
   return String(import.meta.env.VITE_AI_API_URL || 'http://localhost:3001').replace(

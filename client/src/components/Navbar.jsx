@@ -46,6 +46,12 @@ function Navbar() {
         <Link to="/jobs">Finn jobber</Link>
         <Link to={MAGAZINE_PATH}>{MAGAZINE_NAME}</Link>
         <Link to="/priser">Priser</Link>
+        {userData?.newspaperRole === "journalist" ||
+        userData?.newspaperRole === "editor" ? (
+          <Link to="/utblikk/redaksjon" title="Skriv og rediger i Utblikk">
+            Utblikk-redaksjon
+          </Link>
+        ) : null}
 
         {currentUser ? (
           <>

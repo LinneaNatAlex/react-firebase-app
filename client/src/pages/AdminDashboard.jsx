@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  deleteField,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { signOut } from "firebase/auth";
@@ -64,6 +65,28 @@ function AdminDashboard() {
       );
     } catch (error) {
       console.error("Kunne ikke oppdatere AI-tilgang:", error);
+    }
+  }
+
+  async function setNewspaperRole(userId, nextRole) {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        newspaperRole: nextRole === "none" ? deleteField() : nextRole,
+      });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                ...(nextRole === "none"
+                  ? { newspaperRole: undefined }
+                  : { newspaperRole: nextRole }),
+              }
+            : u,
+        ),
+      );
+    } catch (error) {
+      console.error("Kunne ikke oppdatere Utblikk-rolle:", error);
     }
   }
 
@@ -205,6 +228,7 @@ function AdminDashboard() {
                     <th>Navn/Bedrift</th>
                     <th>Registrert</th>
                     <th>AI-pass</th>
+                    <th>Utblikk</th>
                     <th>Handling</th>
                   </tr>
                 </thead>
@@ -239,6 +263,25 @@ function AdminDashboard() {
                         >
                           {user.aiPass ? "AI på" : "Gi AI-pass"}
                         </button>
+                      </td>
+                      <td>
+                        <select
+                          className="admin-select"
+                          value={
+                            user.newspaperRole === "journalist" ||
+                            user.newspaperRole === "editor"
+                              ? user.newspaperRole
+                              : "none"
+                          }
+                          onChange={(e) =>
+                            setNewspaperRole(user.id, e.target.value)
+                          }
+                          aria-label={`Utblikk-rolle for ${user.email}`}
+                        >
+                          <option value="none">Ingen</option>
+                          <option value="journalist">Journalist</option>
+                          <option value="editor">Redaktør</option>
+                        </select>
                       </td>
                       <td>
                         <button
