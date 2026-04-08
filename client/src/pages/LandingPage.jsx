@@ -153,7 +153,7 @@ function LandingPage() {
         <div className="footer-bottom">
           <p>© {new Date().getFullYear()} {BRAND_NAME}</p>
           <p className="ai-credit">
-            Privatpersoner: lokale maler. Bedrifter: sky-AI (Groq) mot betaling
+            Privatpersoner: lokale maler. Bedrifter: sky-AI mot betaling
             – ingen gratis prøveperioder.
           </p>
         </div>

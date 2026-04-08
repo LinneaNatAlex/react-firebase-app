@@ -1,6 +1,6 @@
 // Admin Dashboard - oversikt og kontroll over plattformen
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  deleteField,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { signOut } from "firebase/auth";
@@ -19,6 +20,7 @@ function AdminDashboard() {
   const [applications, setApplications] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
 
   // Sjekk admin-tilgang
@@ -67,6 +69,28 @@ function AdminDashboard() {
     }
   }
 
+  async function setNewspaperRole(userId, nextRole) {
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        newspaperRole: nextRole === "none" ? deleteField() : nextRole,
+      });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                ...(nextRole === "none"
+                  ? { newspaperRole: undefined }
+                  : { newspaperRole: nextRole }),
+              }
+            : u,
+        ),
+      );
+    } catch (error) {
+      console.error("Kunne ikke oppdatere Utblikk-rolle:", error);
+    }
+  }
+
   async function deleteUser(userId) {
     if (!window.confirm("Er du sikker på at du vil slette denne brukeren?"))
       return;
@@ -109,29 +133,50 @@ function AdminDashboard() {
         <div className="sidebar-header">
           <h2 className="sidebar-user-name">Admin</h2>
         </div>
+        <button
+          type="button"
+          className={`sidebar-mobile-toggle${mobileNavOpen ? " is-open" : ""}`}
+          onClick={() => setMobileNavOpen((v) => !v)}
+          aria-expanded={mobileNavOpen}
+        >
+          Meny
+          <span className="chev" aria-hidden />
+        </button>
 
-        <nav className="sidebar-nav">
+        <nav className={`sidebar-nav${mobileNavOpen ? " is-open" : ""}`}>
           <button
             className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => {
+              setActiveTab("overview");
+              setMobileNavOpen(false);
+            }}
           >
             Oversikt
           </button>
           <button
             className={activeTab === "users" ? "active" : ""}
-            onClick={() => setActiveTab("users")}
+            onClick={() => {
+              setActiveTab("users");
+              setMobileNavOpen(false);
+            }}
           >
             Brukere
           </button>
           <button
             className={activeTab === "jobs" ? "active" : ""}
-            onClick={() => setActiveTab("jobs")}
+            onClick={() => {
+              setActiveTab("jobs");
+              setMobileNavOpen(false);
+            }}
           >
             Stillinger
           </button>
           <button
             className={activeTab === "applications" ? "active" : ""}
-            onClick={() => setActiveTab("applications")}
+            onClick={() => {
+              setActiveTab("applications");
+              setMobileNavOpen(false);
+            }}
           >
             Søknader
           </button>
@@ -141,13 +186,19 @@ function AdminDashboard() {
 
           <button
             className={activeTab === "preview-company" ? "active" : ""}
-            onClick={() => setActiveTab("preview-company")}
+            onClick={() => {
+              setActiveTab("preview-company");
+              setMobileNavOpen(false);
+            }}
           >
             Bedrift-dashboard
           </button>
           <button
             className={activeTab === "preview-user" ? "active" : ""}
-            onClick={() => setActiveTab("preview-user")}
+            onClick={() => {
+              setActiveTab("preview-user");
+              setMobileNavOpen(false);
+            }}
           >
             Privatkonto-dashboard
           </button>
@@ -205,6 +256,7 @@ function AdminDashboard() {
                     <th>Navn/Bedrift</th>
                     <th>Registrert</th>
                     <th>AI-pass</th>
+                    <th>Utblikk</th>
                     <th>Handling</th>
                   </tr>
                 </thead>
@@ -239,6 +291,25 @@ function AdminDashboard() {
                         >
                           {user.aiPass ? "AI på" : "Gi AI-pass"}
                         </button>
+                      </td>
+                      <td>
+                        <select
+                          className="admin-select"
+                          value={
+                            user.newspaperRole === "journalist" ||
+                            user.newspaperRole === "editor"
+                              ? user.newspaperRole
+                              : "none"
+                          }
+                          onChange={(e) =>
+                            setNewspaperRole(user.id, e.target.value)
+                          }
+                          aria-label={`Utblikk-rolle for ${user.email}`}
+                        >
+                          <option value="none">Ingen</option>
+                          <option value="journalist">Journalist</option>
+                          <option value="editor">Redaktør</option>
+                        </select>
                       </td>
                       <td>
                         <button

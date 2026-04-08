@@ -1,6 +1,6 @@
 /**
- * RAG: embeddings + enkel lagring i Firestore (ragChunks).
- * Uten OPENAI_API_KEY (eller EMBEDDINGS_API_KEY) hopper vi over – Groq kjører som før.
+ * RAG: embeddings + ragChunks for bedriftens eget innhold (utlyste stillinger + stillingsbibliotek).
+ * Brukes når /api/ai kalles med action jobPosting og OPENAI_API_KEY/EMBEDDINGS_API_KEY er satt.
  */
 
 const OPENAI_EMBED_URL = 'https://api.openai.com/v1/embeddings';
@@ -147,15 +147,15 @@ export async function syncCompanyCorpus(db, companyId, embedApiKey) {
   await Promise.all(batchDeletes);
 
   let written = 0;
-  for (const doc of jobsSnap.docs) {
-    const job = doc.data();
-    const desc = String(job.description || '').trim();
-    if (desc.length < 80) continue;
-    const title = String(job.title || '');
+
+  async function writeChunks(sourcePrefix, docId, titleLine, bodyText, minLen = 80) {
+    const desc = String(bodyText || '').trim();
+    if (desc.length < minLen) return;
+    const title = String(titleLine || '');
     const pieces = chunkText(`${title}\n\n${desc}`);
     let i = 0;
     for (const text of pieces) {
-      const sourceKey = `job_${doc.id}_${i++}`;
+      const sourceKey = `${sourcePrefix}_${docId}_${i++}`;
       try {
         const embedding = await fetchEmbedding(embedApiKey, text);
         await db
@@ -177,8 +177,24 @@ export async function syncCompanyCorpus(db, companyId, embedApiKey) {
     }
   }
 
+  for (const doc of jobsSnap.docs) {
+    const job = doc.data();
+    await writeChunks('job', doc.id, job.title || '', job.description || '', 80);
+  }
+
+  const libSnap = await db
+    .collection('companyJobLibrary')
+    .where('companyId', '==', companyId)
+    .limit(50)
+    .get();
+
+  for (const doc of libSnap.docs) {
+    const row = doc.data();
+    await writeChunks('lib', doc.id, row.title || '', row.description || '', 40);
+  }
+
   await markSynced(db, companyId, field);
-  console.info(`RAG company ${companyId}: ${written} chunks`);
+  console.info(`RAG company ${companyId}: ${written} chunks (jobs + bibliotek)`);
 }
 
 export async function buildRagContextForAction(db, { uid, action, payload, embedApiKey }) {

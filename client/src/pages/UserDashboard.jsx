@@ -6,12 +6,13 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { collection, query, where, getDocs, doc, setDoc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { polishProfileLocal } from '../services/freeTemplates';
 import { syncPublicProfileImageFromCv } from '../services/social';
 import { buildUserSearchNameLower } from '../utils/searchName';
 import UserNetworkPanel from '../components/UserNetworkPanel';
 import IncomingFriendRequestsPanel from '../components/IncomingFriendRequestsPanel';
 import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
+import JobseekerCoverLetterLibraryPanel from '../components/JobseekerCoverLetterLibraryPanel';
+import { fetchCoverLettersFromApplications } from '../services/jobseekerCoverLetters';
 import '../styles/Dashboard.css';
 
 const dismissedMessagesStorageKey = (uid) => `jobportal-dismissed-company-messages:${uid}`;
@@ -41,13 +42,15 @@ function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('applications');
   const [saving, setSaving] = useState(false);
-  const [enhancedCV, setEnhancedCV] = useState(null);
-  const [generatingCV, setGeneratingCV] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const [coverLetterLibrary, setCoverLetterLibrary] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [dismissedMessageAppIds, setDismissedMessageAppIds] = useState(() => new Set());
   const fileInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const photoMenuRef = useRef(null);
   
   // CV/Profil-data
   const [profile, setProfile] = useState({
@@ -94,6 +97,14 @@ function UserDashboard() {
         const profileData = profileDoc.data();
         setProfile(prevProfile => ({ ...prevProfile, ...profileData }));
       }
+
+      try {
+        const letters = await fetchCoverLettersFromApplications(currentUser.uid, 120);
+        setCoverLetterLibrary(letters);
+      } catch (e) {
+        console.warn('Kunne ikke hente søknadsbibliotek fra søknader:', e);
+        setCoverLetterLibrary([]);
+      }
     } catch (error) {
       console.error('Feil ved henting av data:', error);
     } finally {
@@ -111,6 +122,8 @@ function UserDashboard() {
       setActiveTab('network');
     } else if (tab === 'cv') {
       setActiveTab('cv');
+    } else if (tab === 'cover-letter-library') {
+      setActiveTab('cover-letter-library');
     } else if (tab === 'public-profile') {
       setActiveTab('public-profile');
     } else if (tab === 'notifications') {
@@ -275,28 +288,13 @@ function UserDashboard() {
         /* ingen offentlig profil */
       }
 
-      await generateEnhancedCV();
-      
-      // Bytt til forhåndsvisning-fanen
-      setActiveTab('cv-preview');
+      setActiveTab('cv');
       toast.success('CV lagret!');
     } catch (error) {
       console.error('Feil ved lagring:', error);
       toast.error('Kunne ikke lagre. Prøv igjen.');
     }
     setSaving(false);
-  }
-
-  // Ryddet CV-visning (punktlister) – helt lokalt
-  async function generateEnhancedCV() {
-    setGeneratingCV(true);
-    try {
-      setEnhancedCV(polishProfileLocal(profile));
-    } catch (error) {
-      console.error('CV-formatering feilet:', error);
-      setEnhancedCV(null);
-    }
-    setGeneratingCV(false);
   }
 
   // Konverterer status-kode til norsk tekst og farge
@@ -350,6 +348,15 @@ function UserDashboard() {
   // ikke bruk currentUser.photoURL her – det gir et kort blink med Google-bilde før fetchData() er ferdig.
   const displayProfileImage = profile.profileImage || userData?.profileImage || '';
 
+  useEffect(() => {
+    function onDoc(e) {
+      if (!photoMenuRef.current) return;
+      if (!photoMenuRef.current.contains(e.target)) setPhotoMenuOpen(false);
+    }
+    if (photoMenuOpen) document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [photoMenuOpen]);
+
   return (
     <div className="dashboard">
       {/* Skjult filvelger – alltid montert (sidebar + CV-fanen bruker samme) */}
@@ -372,50 +379,93 @@ function UserDashboard() {
 
       {/* Sidebar */}
       <aside className="dashboard-sidebar">
-        <div className="sidebar-account-card">
-          <button
-            type="button"
-            className="sidebar-avatar-wrap"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingImage}
-            title="Bytt profilbilde"
-          >
-            {displayProfileImage ? (
-              <img src={displayProfileImage} alt="" className="sidebar-avatar" />
-            ) : (
-              <span className="sidebar-avatar-placeholder" aria-hidden>+</span>
-            )}
-            {uploadingImage && <span className="sidebar-avatar-loading">…</span>}
-          </button>
-          <p className="sidebar-account-label">Profilbilde på kontoen</p>
-          <button
-            type="button"
-            className="sidebar-photo-link"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingImage}
-          >
-            {displayProfileImage ? 'Bytt bilde' : 'Legg til bilde'}
-          </button>
-          <p className="sidebar-account-hint">Vises på offentlig profil og når du søker</p>
+        <div className="sidebar-profile-header">
+          <div
+            className="sidebar-profile-banner"
+            style={
+              profile.coverImage
+                ? { backgroundImage: `url(${profile.coverImage})` }
+                : undefined
+            }
+          />
+
+          <div className="sidebar-profile-row">
+            <button
+              type="button"
+              className="sidebar-avatar-wrap sidebar-avatar-wrap--header"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingImage}
+              title="Bytt profilbilde"
+            >
+              {displayProfileImage ? (
+                <img src={displayProfileImage} alt="" className="sidebar-avatar" />
+              ) : (
+                <span className="sidebar-avatar-placeholder" aria-hidden>
+                  +
+                </span>
+              )}
+              {uploadingImage && <span className="sidebar-avatar-loading">…</span>}
+            </button>
+
+            <div className="sidebar-profile-meta">
+              <h2 className="sidebar-user-name sidebar-user-name--header">
+                {fullName}
+              </h2>
+            </div>
+          </div>
+
+          <div className="sidebar-photo-actions" ref={photoMenuRef}>
+            <button
+              type="button"
+              className="sidebar-photo-dropdown-btn"
+              onClick={() => setPhotoMenuOpen((v) => !v)}
+              disabled={uploadingImage || uploadingCover}
+              aria-expanded={photoMenuOpen}
+            >
+              Endre bilde
+              <span className="sidebar-photo-dropdown-chev" aria-hidden />
+            </button>
+            {photoMenuOpen ? (
+              <div className="sidebar-photo-dropdown" role="menu">
+                <button
+                  type="button"
+                  className="sidebar-photo-dropdown-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setPhotoMenuOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={uploadingImage}
+                >
+                  {displayProfileImage ? 'Bytt profilbilde' : 'Legg til profilbilde'}
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-photo-dropdown-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setPhotoMenuOpen(false);
+                    coverInputRef.current?.click();
+                  }}
+                  disabled={uploadingCover}
+                >
+                  {profile.coverImage ? 'Bytt banner' : 'Last opp banner'}
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        <div className="sidebar-banner-block">
-          <p className="sidebar-account-label">Banner på profilsiden</p>
-          <p className="sidebar-account-hint">Bredde bilde øverst når andre åpner profilen din.</p>
-          <button
-            type="button"
-            className="sidebar-photo-link"
-            onClick={() => coverInputRef.current?.click()}
-            disabled={uploadingCover}
-          >
-            {uploadingCover ? 'Laster opp…' : profile.coverImage ? 'Bytt banner' : 'Last opp banner'}
-          </button>
-        </div>
-
-        <div className="sidebar-header">
-          <h2 className="sidebar-user-name">{fullName}</h2>
-        </div>
-        <nav className="sidebar-nav" aria-label="Dashbordmeny">
+        <button
+          type="button"
+          className={`sidebar-mobile-toggle${mobileNavOpen ? ' is-open' : ''}`}
+          onClick={() => setMobileNavOpen((v) => !v)}
+          aria-expanded={mobileNavOpen}
+        >
+          Meny
+          <span className="chev" aria-hidden />
+        </button>
+        <nav className={`sidebar-nav${mobileNavOpen ? ' is-open' : ''}`} aria-label="Dashbordmeny">
           <p className="sidebar-label">Offentlig profil</p>
           <div className="sidebar-nav-stack">
             <Link to="/profil/me" className="sidebar-nav-link sidebar-nav-link--highlight">
@@ -427,6 +477,7 @@ function UserDashboard() {
               onClick={() => {
                 setActiveTab('public-profile');
                 setSearchParams({ tab: 'public-profile' });
+                setMobileNavOpen(false);
               }}
             >
               Rediger profilside
@@ -440,6 +491,7 @@ function UserDashboard() {
               onClick={() => {
                 setActiveTab('network');
                 setSearchParams({ tab: 'network' });
+                setMobileNavOpen(false);
               }}
             >
               Nettverk & tips
@@ -454,6 +506,7 @@ function UserDashboard() {
               onClick={() => {
                 setActiveTab('applications');
                 setSearchParams({});
+                setMobileNavOpen(false);
               }}
             >
               Mine søknader
@@ -464,19 +517,21 @@ function UserDashboard() {
               onClick={() => {
                 setActiveTab('cv');
                 setSearchParams({});
+                setMobileNavOpen(false);
               }}
             >
               Rediger CV
             </button>
             <button
               type="button"
-              className={`sidebar-nav-link${activeTab === 'cv-preview' ? ' active' : ''}`}
+              className={`sidebar-nav-link${activeTab === 'cover-letter-library' ? ' active' : ''}`}
               onClick={() => {
-                setActiveTab('cv-preview');
-                setSearchParams({});
+                setActiveTab('cover-letter-library');
+                setSearchParams({ tab: 'cover-letter-library' });
+                setMobileNavOpen(false);
               }}
             >
-              Forhåndsvis CV
+              Søknadsbibliotek ({coverLetterLibrary.length})
             </button>
           </div>
 
@@ -488,6 +543,7 @@ function UserDashboard() {
               onClick={() => {
                 setActiveTab('notifications');
                 setSearchParams({ tab: 'notifications' });
+                setMobileNavOpen(false);
               }}
             >
               Varsler
@@ -876,156 +932,11 @@ function UserDashboard() {
           </>
         )}
 
-        {/* FANE: CV Forhåndsvisning */}
-        {activeTab === 'cv-preview' && (
-          <>
-            <header className="dashboard-header">
-              <div>
-                <h1>Min CV</h1>
-                <p>Slik ser CV-en din ut for arbeidsgivere</p>
-              </div>
-              <div className="header-actions">
-                <button 
-                  className="button secondary"
-                  onClick={() => setActiveTab('cv')}
-                >
-                  Rediger
-                </button>
-                <button 
-                  className="button primary"
-                  onClick={generateEnhancedCV}
-                  disabled={generatingCV}
-                >
-                  {generatingCV ? 'Formatterer…' : 'Strukturer CV (lokalt)'}
-                </button>
-              </div>
-            </header>
-
-            {generatingCV ? (
-              <div className="cv-loading">
-                <div className="loading-spinner"></div>
-                <p>Formatterer CV-en…</p>
-              </div>
-            ) : (
-              <div className="cv-preview-container">
-                <div className="cv-document">
-                  {/* Header med navn og bilde */}
-                  <div className="cv-header">
-                    {displayProfileImage && (
-                      <img 
-                        src={displayProfileImage} 
-                        alt={fullName}
-                        className="cv-profile-image"
-                      />
-                    )}
-                    <div className="cv-header-text">
-                      <h1 className="cv-name">{fullName}</h1>
-                      <p className="cv-headline">
-                        {String(enhancedCV?.headline || profile.jobTitle || 'Privatperson')}
-                      </p>
-                      <div className="cv-contact-info">
-                        <span>{userData?.email || currentUser?.email}</span>
-                        {profile.phone && <span>{profile.phone}</span>}
-                        {profile.location && <span>{profile.location}</span>}
-                      </div>
-                      {(profile.linkedIn || profile.portfolio) && (
-                        <div className="cv-links">
-                          {profile.linkedIn && (
-                            <a href={profile.linkedIn.startsWith('http') ? profile.linkedIn : `https://${profile.linkedIn}`} 
-                               target="_blank" rel="noopener noreferrer">
-                              LinkedIn
-                            </a>
-                          )}
-                          {profile.portfolio && (
-                            <a href={profile.portfolio.startsWith('http') ? profile.portfolio : `https://${profile.portfolio}`}
-                               target="_blank" rel="noopener noreferrer">
-                              Portefølje
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sammendrag */}
-                  {(enhancedCV?.summary || profile.summary) && (
-                    <div className="cv-section">
-                      <h2>Profil</h2>
-                      <p>{String(enhancedCV?.summary || profile.summary || '')}</p>
-                    </div>
-                  )}
-
-                  {/* Hva jeg ser etter */}
-                  {profile.desiredPosition && (
-                    <div className="cv-section cv-desired">
-                      <h2>Hva jeg ser etter</h2>
-                      <p>{profile.desiredPosition}</p>
-                    </div>
-                  )}
-
-                  {/* Erfaring */}
-                  {(enhancedCV?.experience || profile.experience) && (
-                    <div className="cv-section">
-                      <h2>Arbeidserfaring</h2>
-                      <div className="cv-content">
-                        {String(enhancedCV?.experience || profile.experience || '').split('\n').map((line, i) => (
-                          line && <p key={i}>{line}</p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Utdanning */}
-                  {(enhancedCV?.education || profile.education) && (
-                    <div className="cv-section">
-                      <h2>Utdanning</h2>
-                      <div className="cv-content">
-                        {String(enhancedCV?.education || profile.education || '').split('\n').map((line, i) => (
-                          line && <p key={i}>{line}</p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ferdigheter */}
-                  {(enhancedCV?.skills || profile.skills) && (
-                    <div className="cv-section">
-                      <h2>Ferdigheter</h2>
-                      <div className="cv-skills">
-                        {String(enhancedCV?.skills || profile.skills || '').split(',').map((skill, i) => (
-                          skill.trim() && <span key={i} className="skill-tag">{skill.trim()}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Språk */}
-                  {(enhancedCV?.languages || profile.languages) && (
-                    <div className="cv-section">
-                      <h2>Språk</h2>
-                      <p>{typeof (enhancedCV?.languages || profile.languages) === 'object' 
-                        ? JSON.stringify(enhancedCV?.languages || profile.languages).replace(/[{}"]/g, '').replace(/,/g, ', ').replace(/:/g, ': ')
-                        : (enhancedCV?.languages || profile.languages)
-                      }</p>
-                    </div>
-                  )}
-
-                  {/* Tom CV melding */}
-                  {!profile.summary && !profile.experience && !profile.education && (
-                    <div className="cv-empty">
-                      <p>CV-en din er tom. <button onClick={() => setActiveTab('cv')}>Fyll ut informasjon</button> for å se forhåndsvisning.</p>
-                    </div>
-                  )}
-                </div>
-
-                {enhancedCV && (
-                  <div className="cv-enhanced-notice">
-                    Strukturert visning (lokalt) – innholdet er ditt; les gjennom før du søker.
-                  </div>
-                )}
-              </div>
-            )}
-          </>
+        {activeTab === 'cover-letter-library' && (
+          <JobseekerCoverLetterLibraryPanel
+            items={coverLetterLibrary}
+            onRefresh={fetchData}
+          />
         )}
 
         {activeTab === 'notifications' && <NotificationSettingsPanel />}

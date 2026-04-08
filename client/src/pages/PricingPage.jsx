@@ -5,28 +5,10 @@ import { useAuth } from "../context/AuthContext";
 import { BRAND_NAME } from "../config/brand";
 import "../styles/PricingPage.css";
 
-const GROQ_DOCS = "https://console.groq.com/docs/models";
-
-/** Groq Llama 3.1 8B Instant – typiske listepriser (USD per 1M tokens) */
-const GROQ_8B_INPUT_PER_M = 0.05;
-const GROQ_8B_OUTPUT_PER_M = 0.08;
-const USD_TO_NOK = 11;
-
 /** Anbefalt månedspris for ubegrenset bedrifts-AI (juster etter marked) */
 const RECOMMENDED_MONTHLY_NOK = 599;
-const PRICE_RANGE_LOW = 399;
-const PRICE_RANGE_HIGH = 899;
-
-function usdToNok(usd) {
-  return usd * USD_TO_NOK;
-}
-
-function estimateCallCostUsd(inputTokens, outputTokens) {
-  return (
-    (inputTokens / 1_000_000) * GROQ_8B_INPUT_PER_M +
-    (outputTokens / 1_000_000) * GROQ_8B_OUTPUT_PER_M
-  );
-}
+const STARTER_MONTHLY_NOK = 399;
+const STARTER_CALLS_PER_MONTH = 10;
 
 export default function PricingPage() {
   const { currentUser, userData } = useAuth();
@@ -36,60 +18,92 @@ export default function PricingPage() {
   const contactEmail = String(import.meta.env.VITE_CONTACT_EMAIL || "").trim();
 
   const isCompany = userData?.userType === "company";
-
-  const examples = [
-    {
-      label: "Stillingsannonse (typisk)",
-      inT: 600,
-      outT: 1600,
-    },
-    {
-      label: "AI-vurdering av søkere (større prompt)",
-      inT: 12000,
-      outT: 1800,
-    },
-  ];
+  const isJobseeker = userData?.userType === "jobseeker";
 
   return (
     <div className="pricing-page">
       <div className="pricing-hero">
-        <h1>Priser og AI for bedrifter</h1>
+        <h1>Priser</h1>
         <p className="lead">
-          <strong>Betaling gjelder kun bedrifter.</strong> Privatpersoner bruker
-          lokale maler i nettleseren – ingen sky-AI. For bedrifter finnes det{" "}
-          <strong>ingen gratis prøveperiode på AI</strong>: tilgang aktiveres
-          etter kjøp eller av administrator (<code>aiPass</code>).
+          Her ser du både privat- og bedriftspriser. Du kan lese alt uansett
+          konto — men du må være riktig kontotype for å kjøpe.
         </p>
       </div>
 
       <div className="pricing-container">
-        <h2 className="pricing-section-title">Privatpersoner – lokale maler</h2>
         <div className="pricing-callout" style={{ marginTop: "0.5rem" }}>
-          <strong>Søknad og CV-hjelp skjer lokalt</strong> – uten Groq og uten
-          betaling. Sky-AI er ikke en del av privatkontoen her.
+          <strong>Viktig å skille:</strong> Abonnementene under handler om to
+          ulike ting: 1) privatpersoners lagring/gjenbruk av egne søknader, og 2)
+          bedrifters AI som tillegg.
         </div>
 
-        <h2 className="pricing-section-title">RAG for bedrifter (valgfritt)</h2>
-        <p className="template-hint" style={{ lineHeight: 1.65 }}>
-          Når du setter <code>OPENAI_API_KEY</code> på serveren til embeddings,
-          kan AI-stillingsutkast få med utdrag fra
-          <strong> bedriftens egne tidligere annonser</strong> som
-          stil-referanse (ikke ordrett kopiering). Dette er kun relevant for
-          bedrifter som har kjøpt AI-tilgang.
-        </p>
+        <h2 className="pricing-section-title">Privatpersoner</h2>
+        <div className="pricing-cards" style={{ marginTop: "0.75rem" }}>
+          <div className="pricing-card">
+            <h3>Gratis</h3>
+            <div className="price">0 kr</div>
+            <p className="price-note">For de fleste</p>
+            <ul>
+              <li>Send søknader og følg status</li>
+              <li>Lag utkast basert på egen CV</li>
+              <li>Søknadsbibliotek: se og gjenbruk de siste 10</li>
+              <li>Søk i tidligere tekster (bedrift/stilling/tekst)</li>
+              <li>Kopier/rediger for rask gjenbruk</li>
+            </ul>
+            {!currentUser ? (
+              <Link to="/register" className="button secondary">
+                Opprett privatkonto
+              </Link>
+            ) : isCompany ? (
+              <p className="price-note" style={{ marginBottom: 0 }}>
+                Du er logget inn som bedrift — bytt til privatkonto for å bruke
+                denne delen.
+              </p>
+            ) : (
+              <Link to="/dashboard/user" className="button secondary">
+                Til Min side
+              </Link>
+            )}
+          </div>
+          <div className="pricing-card featured">
+            <h3>Søknadsbibliotek+</h3>
+            <div className="price">99 kr/mnd</div>
+            <p className="price-note">For aktive jobbsøkere</p>
+            <ul>
+              <li>Flere enn 10 lagrede søknader</li>
+              <li>Bedre historikk når du søker mye</li>
+              <li>Raskere gjenbruk på tvers av bransje/roller</li>
+              <li>Mer kontroll: rediger og rydd opp i biblioteket</li>
+              <li>Godt for “standard”-avsnitt du bruker ofte</li>
+            </ul>
+            <button
+              type="button"
+              className="button primary"
+              disabled
+              style={{ opacity: 0.8, cursor: "not-allowed" }}
+              title="Kobles til betaling senere"
+            >
+              Abonnement kommer
+            </button>
+            {currentUser && !isJobseeker ? (
+              <p className="price-note" style={{ marginBottom: 0 }}>
+                Krever privatkonto for å abonnere.
+              </p>
+            ) : null}
+          </div>
+        </div>
 
-        <h2 className="pricing-section-title">
-          Bedrifter – AI som tilleggstjeneste
-        </h2>
+        <h2 className="pricing-section-title">Bedrifter</h2>
         <div className="pricing-cards">
           <div className="pricing-card">
-            <h3>Uten AI-tilgang</h3>
+            <h3>Standard (uten AI)</h3>
             <div className="price">0 kr</div>
-            <p className="price-note">Standard for nye bedrifter</p>
+            <p className="price-note">Alltid tilgjengelig</p>
             <ul>
               <li>Lokale maler for stillingstekst</li>
               <li>Lokal treff-score på søkere (uten språkmodell)</li>
-              <li>Ingen sky-AI før dere kjøper tilgang</li>
+              <li>Stillingsbibliotek for gjenbruk av egne tekster</li>
+              <li>Reduser tid på nye annonser med “kopier fra tidligere”</li>
             </ul>
             {currentUser && isCompany ? (
               <Link to="/dashboard/company" className="button secondary">
@@ -97,9 +111,49 @@ export default function PricingPage() {
               </Link>
             ) : currentUser && !isCompany ? (
               <p className="price-note" style={{ marginBottom: 0 }}>
-                Du er logget inn som privatperson – prissettingen over gjelder
-                bedrifter.
+                Du er logget inn som privatperson — bedrifter registreres separat.
               </p>
+            ) : (
+              <Link to="/register" className="button secondary">
+                Registrer bedrift
+              </Link>
+            )}
+          </div>
+
+          <div className="pricing-card">
+            <h3>AI Startpakke (bedrift)</h3>
+            <div className="price">
+              {STARTER_MONTHLY_NOK} kr/mnd
+            </div>
+            <p className="price-note">
+              Begrenset antall AI-kall per måned
+            </p>
+            <ul>
+              <li>{STARTER_CALLS_PER_MONTH} AI-kall / måned</li>
+              <li>Passer små bedrifter som vil teste</li>
+              <li>RAG kan brukes til stil-referanser når AI skriver</li>
+              <li>Smart gjenbruk av egne tekster via bibliotek</li>
+            </ul>
+            {isCompany ? (
+              <button
+                type="button"
+                className="button secondary"
+                disabled
+                style={{ opacity: 0.85, cursor: "not-allowed" }}
+                title="Kobles til betaling senere"
+              >
+                Startpakke kommer
+              </button>
+            ) : currentUser ? (
+              <button
+                type="button"
+                className="button secondary"
+                disabled
+                style={{ opacity: 0.85, cursor: "not-allowed" }}
+                title="Du må være logget inn som bedrift for å kjøpe"
+              >
+                Krever bedriftskonto
+              </button>
             ) : (
               <Link to="/register" className="button secondary">
                 Registrer bedrift
@@ -110,18 +164,13 @@ export default function PricingPage() {
           <div className="pricing-card featured">
             <h3>Ubegrenset AI (bedrift)</h3>
             <div className="price">{RECOMMENDED_MONTHLY_NOK} kr/mnd</div>
-            <p className="price-note">
-              Anbefalt utgangspunkt. Juster gjerne mellom ca. {PRICE_RANGE_LOW}–
-              {PRICE_RANGE_HIGH} kr ut fra marked, antall annonser og hva
-              konkurrentene tar.
-            </p>
+            <p className="price-note">AI som tillegg (ingen gratis prøveperiode)</p>
             <ul>
               <li>Ubegrenset AI-stillingsutkast og AI-vurdering av søkere</li>
               <li>Én pris per bedriftskonto (enkel forutsigbarhet)</li>
-              <li>
-                Rå API-kost med liten modell er vanligvis lav – prisen dekker
-                drift, support og margin
-              </li>
+              <li>Valgfri stil-referanse fra egne tidligere annonser (RAG)</li>
+              <li>Spare tid i rekruttering (førsteutkast + struktur)</li>
+              <li>Mer konsistent tone på tvers av annonser</li>
             </ul>
             {isCompany && stripeOrPayUrl ? (
               <a
@@ -139,26 +188,16 @@ export default function PricingPage() {
               >
                 Kontakt oss for tilgang
               </a>
-            ) : !isCompany && currentUser ? (
-              <Link to="/jobs" className="button secondary">
-                Finn jobber
-              </Link>
-            ) : stripeOrPayUrl ? (
-              <a
-                className="button primary"
-                href={stripeOrPayUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+            ) : currentUser && !isCompany ? (
+              <button
+                type="button"
+                className="button secondary"
+                disabled
+                style={{ opacity: 0.85, cursor: "not-allowed" }}
+                title="Du må være logget inn som bedrift for å kjøpe"
               >
-                Kjøp tilgang (bedrift)
-              </a>
-            ) : contactEmail ? (
-              <a
-                className="button primary"
-                href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Ubegrenset AI ${BRAND_NAME} (bedrift)`)}`}
-              >
-                Kontakt oss (bedrift)
-              </a>
+                Krever bedriftskonto
+              </button>
             ) : (
               <button
                 type="button"
@@ -172,132 +211,79 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <h2 className="pricing-section-title">
-          Hvorfor ca. {RECOMMENDED_MONTHLY_NOK} kr/mnd?
-        </h2>
-        <p className="template-hint" style={{ lineHeight: 1.65 }}>
-          Groq med en <strong>8B-modell</strong> gir ofte veldig lave kostnader
-          per kall (se tabellen under). Likevel tar de fleste plattformer
-          betaling som også dekker utvikling, support, risiko og avanse.{" "}
-          <strong>
-            {PRICE_RANGE_LOW}–{PRICE_RANGE_HIGH} kr/mnd
-          </strong>{" "}
-          per bedrift er et realistisk spenn for en norsk nisjeportal: du kan
-          starte i nedre ende for å få volum, eller ligge høyere hvis du selger
-          inn mot større arbeidsgivere.{" "}
-          <strong>{RECOMMENDED_MONTHLY_NOK} kr</strong> er et greit midtpunkt å
-          teste markedet med.
-        </p>
-
-        <h2 className="pricing-section-title">
-          Hva koster det i Groq-gebyrer? (ca.)
-        </h2>
-        <p className="template-hint" style={{ marginBottom: "0.75rem" }}>
-          Typisk modell: Llama 3.1 8B Instant. Sjekk alltid{" "}
-          <a
-            href="https://groq.com/pricing"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            groq.com/pricing
-          </a>
-          .
-        </p>
-
-        <table className="cost-table">
-          <thead>
-            <tr>
-              <th>Eksempel (ca. tokens)</th>
-              <th>Kostnad Groq 8B (ca.)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {examples.map((ex) => {
-              const usd = estimateCallCostUsd(ex.inT, ex.outT);
-              const nok = usdToNok(usd);
-              return (
-                <tr key={ex.label}>
-                  <td>
-                    {ex.label}
-                    <br />
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "var(--color-muted)",
-                      }}
-                    >
-                      ~{ex.inT.toLocaleString("nb-NO")} inn + ~
-                      {ex.outT.toLocaleString("nb-NO")} ut
-                    </span>
-                  </td>
-                  <td>
-                    ~{usd < 0.0001 ? "< 0,0001" : usd.toFixed(4)} USD (~
-                    {nok < 0.01 ? "< 0,01" : nok.toFixed(2)} kr)
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        <div className="pricing-callout">
-          <strong>Kort sagt:</strong> med 8B er rå API ofte «billig per klikk».
-          Månedsprisen til bedriften er i praksis et{" "}
-          <strong>produkt-/tjenestegebyr</strong>, ikke en 1:1-refusjon av
-          tokens.
-        </div>
-
-        <h2 className="pricing-section-title">
-          Billigere alternativer (teknisk)
-        </h2>
-        <ul
-          className="template-hint"
-          style={{ lineHeight: 1.65, marginTop: "0.5rem" }}
-        >
-          <li>
-            <strong>Annen leverandør:</strong> OpenRouter, Together, Fireworks –
-            ofte lignende pris for små modeller.
-          </li>
-          <li>
-            <strong>Egen maskin:</strong> Ollama + liten modell på VPS = fast
-            månedssum, mer vedlikehold.
-          </li>
-        </ul>
-
-        <h2 className="pricing-section-title">Ofte stilt</h2>
+        <h2 className="pricing-section-title">Detaljer (valgfritt)</h2>
         <div className="pricing-faq">
           <details>
-            <summary>Må privatpersoner betale for AI?</summary>
+            <summary>Hva betyr RAG?</summary>
             <p>
-              Nei. De bruker lokale maler. Sky-AI (Groq) er bare for bedrifter
-              som har kjøpt tilgang.
+              RAG er kort sagt en måte å <strong>finne frem</strong> relevante utdrag fra tekster
+              dere allerede har (f.eks. gamle stillingsannonser eller bibliotektekster).
+              <br />
+              <br />
+              RAG kan brukes på to måter:
+              <br />
+              <strong>1) Som støtte til AI:</strong> Når AI skal skrive et utkast, får den med
+              relevante utdrag som kontekst — det gir ofte mer riktig tone og mindre “generisk” tekst.
+              <br />
+              <strong>2) Som smart gjenbruk:</strong> Du kan bruke samme “finn frem”-logikk til å hente
+              tidligere tekster og gjenbruke dem direkte, uten at AI skriver noe nytt.
             </p>
           </details>
           <details>
-            <summary>Finnes det gratis AI-prøver for bedrifter?</summary>
+            <summary>Hvorfor koster AI {RECOMMENDED_MONTHLY_NOK} kr/mnd?</summary>
             <p>
-              Nei. Bedriften må ha <code>aiPass</code> (betaling eller manuelt
-              fra admin) før AI-knappene fungerer.
+              Bedrifts-AI prises som et tillegg fordi det koster å drifte (server, sikkerhet og
+              vedlikehold), og fordi det gir en forutsigbar månedsmodell for bedriften.
+              <br />
+              <br />
+              Merk: AI-verktøyene er under etablering og vil forbedres over tid.
             </p>
           </details>
           <details>
-            <summary>Er Groq dyrt?</summary>
+            <summary>Hvordan velge mellom Startpakke og Ubegrenset?</summary>
             <p>
-              For små modeller er det vanligvis ikke det som driver kostnaden –
-              volum og valg av stor modell er det som merkes på regningen.
+              <strong>Startpakke</strong> passer hvis dere bare trenger AI av og til — f.eks. 1–2 stillingsutkast
+              og noen få AI-vurderinger i måneden.
+              <br />
+              <br />
+              <strong>Ubegrenset</strong> passer hvis dere vil bruke AI jevnlig uten å tenke på kvoter.
+              <br />
+              <br />
+              Tips: Bruk bibliotek/RAG til å gjenbruke egne tekster når dere kan, og bruk AI når dere vil spare mest tid.
+            </p>
+          </details>
+          <details>
+            <summary>Må jeg bruke AI for å få nytte av RAG?</summary>
+            <p>
+              Nei. RAG kan også brukes som et <strong>smart søk</strong> i egne tekster.
+              <br />
+              <br />
+              Praktisk eksempel: Du har AI-abonnement, men ønsker å begrense AI-kall. Da kan du
+              bruke biblioteket/RAG til å finne en tidligere annonse eller et “standard-avsnitt”
+              du har skrevet før, og gjenbruke det direkte.
+              <br />
+              <br />
+              Hvorfor dette er lettvint: du slipper å lete manuelt i gamle dokumenter, og du
+              slipper å be AI om å skrive alt fra bunnen hver gang.
+            </p>
+          </details>
+          <details>
+            <summary>Kan jeg se bedriftsprisene uten bedriftskonto?</summary>
+            <p>
+              Ja. Prisene er åpne, så alle kan lese dem.
+              <br />
+              <br />
+              Men:
+              <br />
+              - Hvis du er innlogget som privatperson, vil «Kjøp»-knappen være låst for bedrift.
+              <br />
+              - Hvis du er innlogget som bedrift, vil du kunne kjøpe/aktivere bedriftsdelen.
+              <br />
+              <br />
+              Dette gjør at du kan planlegge og sammenligne før du eventuelt registrerer riktig konto.
             </p>
           </details>
         </div>
-
-        <p className="pricing-footnote">
-          Anslag bruker {GROQ_8B_INPUT_PER_M} USD/M inn og{" "}
-          {GROQ_8B_OUTPUT_PER_M} USD/M ut og ~{USD_TO_NOK} kr/USD – kun
-          planlegging. Se også{" "}
-          <a href={GROQ_DOCS} target="_blank" rel="noopener noreferrer">
-            modell-dokumentasjon
-          </a>
-          .
-        </p>
 
         <p style={{ marginTop: "1rem" }}>
           <Link to="/">← Til forsiden</Link>

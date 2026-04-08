@@ -1,7 +1,13 @@
 // Håndterer innlogging for hele appen
 // Bruk useAuth() i andre komponenter for å få tilgang til brukerdata og funksjoner
 
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -97,13 +103,14 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
-  // Oppdater brukerdata (f.eks. etter nytt profilbilde)
-  async function refreshUserData() {
+  // Oppdater brukerdata (f.eks. etter nytt profilbilde eller endret rolle i Firestore)
+  const refreshUserData = useCallback(async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) return null;
     const merged = await fetchUserWithProfilePhoto(user.uid);
     setUserData(merged);
-  }
+    return merged;
+  }, []);
 
   // Kjører når appen starter - sjekker om bruker allerede er logget inn
   useEffect(() => {

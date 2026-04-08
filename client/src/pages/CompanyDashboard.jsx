@@ -1,6 +1,6 @@
 // Dashboard for bedrifter - administrer stillingsannonser og se søkere
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/Toast";
@@ -22,9 +22,23 @@ import {
 } from "../services/freeTemplates";
 import { postAi } from "../services/aiApi";
 import AiPaywallModal from "../components/AiPaywallModal";
+import CompanyJobLibraryPanel from "../components/CompanyJobLibraryPanel";
 import NotificationSettingsPanel from "../components/NotificationSettingsPanel";
+import {
+  fetchCompanyJobLibrary,
+  touchCompanyJobLibraryLastUsed,
+} from "../services/companyJobLibrary";
 import { notifyJobseekerApplicationUpdate } from "../services/notifications";
 import "../styles/Dashboard.css";
+
+function firestoreTsMs(t) {
+  if (t?.toMillis) return t.toMillis();
+  if (typeof t?.seconds === "number") return t.seconds * 1000;
+  return 0;
+}
+
+/** AI-generert stillingstekst er slått av inntil bruk er avtalt/juridisk avklart. */
+const AI_JOB_POSTING_ENABLED = false;
 
 function CompanyDashboard() {
   const { currentUser, userData, refreshUserData } = useAuth();
@@ -33,6 +47,7 @@ function CompanyDashboard() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("jobs");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showNewJobForm, setShowNewJobForm] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
@@ -40,6 +55,9 @@ function CompanyDashboard() {
   const [rankingInProgress, setRankingInProgress] = useState(false);
   const [aiJobLoading, setAiJobLoading] = useState(false);
   const [showAiPaywall, setShowAiPaywall] = useState(false);
+  const [reuseSource, setReuseSource] = useState("");
+  const [reuseSearch, setReuseSearch] = useState("");
+  const [jobLibraryItems, setJobLibraryItems] = useState([]);
 
   // Melding til søker
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -123,6 +141,14 @@ function CompanyDashboard() {
 
       setJobs(jobsWithCounts);
       setApplications(appsList);
+
+      try {
+        const libraryList = await fetchCompanyJobLibrary(currentUser.uid);
+        setJobLibraryItems(libraryList);
+      } catch (libErr) {
+        console.warn("Kunne ikke hente stillingsbibliotek:", libErr);
+        setJobLibraryItems([]);
+      }
     } catch (error) {
       console.error("Feil ved henting av data:", error);
     } finally {
@@ -133,6 +159,13 @@ function CompanyDashboard() {
   useEffect(() => {
     fetchData();
   }, [currentUser]);
+
+  useEffect(() => {
+    if (showNewJobForm) {
+      setReuseSource("");
+      setReuseSearch("");
+    }
+  }, [showNewJobForm]);
 
   // Lagrer ny stilling
   async function handleCreateJob(event) {
@@ -156,6 +189,8 @@ function CompanyDashboard() {
         keywords: "",
       });
       setShowNewJobForm(false);
+      setReuseSource("");
+      setReuseSearch("");
       fetchData();
     } catch (error) {
       console.error("Feil ved opprettelse av jobb:", error);
@@ -201,6 +236,12 @@ function CompanyDashboard() {
   }
 
   async function handleAiJobPosting() {
+    if (!AI_JOB_POSTING_ENABLED) {
+      toast.info(
+        "AI-utkast for stillinger er ikke tilgjengelig inntil videre. Bruk mal eller gjenbruk fra egne annonser.",
+      );
+      return;
+    }
     if (userData?.aiPass !== true) {
       setShowAiPaywall(true);
       return;
@@ -232,10 +273,88 @@ function CompanyDashboard() {
       if (e.code === "AI_LIMIT") setShowAiPaywall(true);
       else
         toast.error(
-          e.message || "AI feilet. Sjekk at server kjører med GROQ_API_KEY.",
+          e.message ||
+            "AI feilet. Sjekk at server kjører med LLM-konfigurasjon (se server/.env.example).",
         );
     }
     setAiJobLoading(false);
+  }
+
+  const allReuseRows = useMemo(() => {
+    const rows = [];
+    for (const j of jobs) {
+      if (!(j.description || "").trim()) continue;
+      rows.push({
+        key: `job:${j.id}`,
+        kind: "job",
+        id: j.id,
+        label: `Utlyst: ${j.title?.trim() || "Uten tittel"}`,
+        description: j.description,
+        sort: firestoreTsMs(j.createdAt),
+      });
+    }
+    for (const l of jobLibraryItems) {
+      if (!(l.description || "").trim()) continue;
+      rows.push({
+        key: `lib:${l.id}`,
+        kind: "lib",
+        id: l.id,
+        label: `Bibliotek: ${l.title?.trim() || "Uten tittel"}`,
+        description: l.description,
+        sort: Math.max(
+          firestoreTsMs(l.updatedAt),
+          firestoreTsMs(l.createdAt),
+          firestoreTsMs(l.lastUsedAt),
+        ),
+      });
+    }
+    rows.sort((a, b) => b.sort - a.sort);
+    return rows;
+  }, [jobs, jobLibraryItems]);
+
+  const filteredReuseRows = useMemo(() => {
+    const q = reuseSearch.trim().toLowerCase();
+    if (!q) return allReuseRows;
+    return allReuseRows.filter(
+      (r) =>
+        r.label.toLowerCase().includes(q) ||
+        String(r.description).toLowerCase().includes(q),
+    );
+  }, [allReuseRows, reuseSearch]);
+
+  const reuseRowsForSelect = useMemo(() => {
+    const sel = allReuseRows.find((r) => r.key === reuseSource);
+    const has = filteredReuseRows.some((r) => r.key === reuseSource);
+    if (sel && !has) return [sel, ...filteredReuseRows];
+    return filteredReuseRows;
+  }, [allReuseRows, filteredReuseRows, reuseSource]);
+
+  async function handleReuseJobDescription() {
+    const row = allReuseRows.find((r) => r.key === reuseSource);
+    if (!row?.description?.trim()) {
+      toast.warning("Velg en kilde med beskrivelsestekst.");
+      return;
+    }
+    const next = String(row.description).trim();
+    if (newJob.description.trim() && newJob.description.trim() !== next) {
+      if (
+        !window.confirm(
+          "Erstatte nåværende beskrivelse med teksten fra den valgte kilden?",
+        )
+      ) {
+        return;
+      }
+    }
+    setNewJob({ ...newJob, description: next });
+    if (row.kind === "lib") {
+      try {
+        await touchCompanyJobLibraryLastUsed(row.id);
+        await fetchData();
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    toast.success("Tekst innlimt – tilpass tittel og detaljer.");
   }
 
   // Rangering: nøkkelord fra annonsen mot søknad/CV (gratis, uendelig skalerbart)
@@ -411,28 +530,52 @@ function CompanyDashboard() {
         <div className="sidebar-header">
           <h2 className="sidebar-user-name">{userData?.companyName || "Min bedrift"}</h2>
         </div>
-        <nav className="sidebar-nav">
+        <button
+          type="button"
+          className={`sidebar-mobile-toggle${mobileNavOpen ? " is-open" : ""}`}
+          onClick={() => setMobileNavOpen((v) => !v)}
+          aria-expanded={mobileNavOpen}
+        >
+          Meny
+          <span className="chev" aria-hidden />
+        </button>
+        <nav className={`sidebar-nav${mobileNavOpen ? " is-open" : ""}`}>
           <p className="sidebar-label">Oversikt</p>
           <button
             className={activeTab === "jobs" ? "active" : ""}
             onClick={() => {
               setActiveTab("jobs");
               setSelectedJob(null);
+              setMobileNavOpen(false);
             }}
           >
             Stillinger ({jobs.length})
           </button>
           <button
             className={activeTab === "applicants" ? "active" : ""}
-            onClick={() => setActiveTab("applicants")}
+            onClick={() => {
+              setActiveTab("applicants");
+              setMobileNavOpen(false);
+            }}
           >
             Alle søkere ({applications.length})
+          </button>
+          <button
+            className={activeTab === "library" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("library");
+              setSelectedJob(null);
+              setMobileNavOpen(false);
+            }}
+          >
+            Stillingsbibliotek ({jobLibraryItems.length})
           </button>
           <button
             className={activeTab === "notifications" ? "active" : ""}
             onClick={() => {
               setActiveTab("notifications");
               setSelectedJob(null);
+              setMobileNavOpen(false);
             }}
           >
             Varsler
@@ -451,6 +594,15 @@ function CompanyDashboard() {
 
       <main className="dashboard-main">
         {activeTab === "notifications" && <NotificationSettingsPanel />}
+
+        {activeTab === "library" && currentUser?.uid && (
+          <CompanyJobLibraryPanel
+            companyId={currentUser.uid}
+            jobs={jobs}
+            jobLibraryItems={jobLibraryItems}
+            onRefresh={fetchData}
+          />
+        )}
 
         {/* STILLINGER-FANE */}
         {activeTab === "jobs" && !selectedJob && (
@@ -578,7 +730,7 @@ function CompanyDashboard() {
                   >
                     {rankingInProgress
                       ? "AI jobber…"
-                      : "AI-vurder søkere (Groq)"}
+                      : "AI-vurder søkere"}
                   </button>
                   <button
                     className="button secondary"
@@ -821,23 +973,69 @@ function CompanyDashboard() {
                       </button>
                       <button
                         type="button"
-                        className="template-generate-btn"
+                        className="template-generate-btn template-generate-btn--disabled"
                         onClick={handleAiJobPosting}
-                        disabled={aiJobLoading}
+                        disabled={!AI_JOB_POSTING_ENABLED || aiJobLoading}
+                        title="AI-utkast er ikke tilgjengelig inntil videre (krever avklaring om bruk)."
                       >
-                        {aiJobLoading ? "AI…" : "AI-utkast (Groq)"}
+                        {aiJobLoading ? "AI…" : "AI-utkast"}
                       </button>
                     </div>
                   </div>
+                  <div className="form-group reuse-previous-block">
+                    <label htmlFor="reuse-search">Gjenbruk egen tekst</label>
+                    <input
+                      id="reuse-search"
+                      type="search"
+                      className="reuse-search-input"
+                      placeholder="Søk i tittel eller tekst…"
+                      value={reuseSearch}
+                      onChange={(e) => setReuseSearch(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <div className="reuse-previous-actions">
+                      <select
+                        id="reuse-job-select"
+                        value={reuseSource}
+                        onChange={(e) => setReuseSource(e.target.value)}
+                        className="reuse-source-select"
+                      >
+                        <option value="">
+                          Velg utlyst stilling eller bibliotektekst…
+                        </option>
+                        {reuseRowsForSelect.map((r) => (
+                          <option key={r.key} value={r.key}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="button secondary reuse-previous-insert"
+                        onClick={() => void handleReuseJobDescription()}
+                        disabled={!reuseSource}
+                      >
+                        Lim inn tekst
+                      </button>
+                    </div>
+                    <p className="template-hint">
+                      Nyeste først. «Bibliotek» er tekster du lagrer under{" "}
+                      <strong>Stillingsbibliotek</strong> (eller kopi fra utlyst
+                      stilling). Det er ikke AI. Når AI-utkast aktiveres igjen,
+                      kan serveren hente utdrag herfra til LLM (embeddings/RAG)
+                      hvis konfigurert.
+                    </p>
+                  </div>
                   {aiError && <p className="ai-error">{aiError}</p>}
-                  <p className="template-hint">{aiAccessLabel}</p>
                   <p className="template-hint">
                     <strong>Mal (gratis):</strong> bruker tittel, sted,
                     nøkkelord og teksten fra{" "}
                     <Link to="/dashboard/company/profil">Bedriftsprofil</Link>{" "}
-                    (Om bedriften). <strong>AI-utkast:</strong> krever kjøpt
-                    AI-tilgang. Med <code>OPENAI_API_KEY</code> på serveren
-                    brukes tidligere stillinger som stil-referanse (RAG).
+                    (Om bedriften).
+                  </p>
+                  <p className="template-hint">
+                    <strong>AI-utkast:</strong> ikke tilgjengelig inntil videre.
+                    AI til søkervurdering (egnede kontoer) er uendret.
                   </p>
                   <textarea
                     value={newJob.description}
@@ -1007,6 +1205,30 @@ function CompanyDashboard() {
                     Søkeren sendte ikke med søknadstekst
                   </p>
                 )}
+                {selectedApplicant.cvPdfUrl ? (
+                  <p className="template-hint" style={{ marginTop: "0.75rem" }}>
+                    CV/PDF:{" "}
+                    <a
+                      href={selectedApplicant.cvPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {selectedApplicant.cvPdfName || "Åpne PDF"}
+                    </a>
+                  </p>
+                ) : null}
+                {selectedApplicant.coverLetterPdfUrl ? (
+                  <p className="template-hint" style={{ marginTop: "0.75rem" }}>
+                    PDF-vedlegg:{" "}
+                    <a
+                      href={selectedApplicant.coverLetterPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {selectedApplicant.coverLetterPdfName || "Åpne PDF"}
+                    </a>
+                  </p>
+                ) : null}
               </div>
 
               <div className="detail-actions">

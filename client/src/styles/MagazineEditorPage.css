@@ -1,0 +1,211 @@
+.magazine-editor-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 3rem;
+  min-height: calc(100vh - 60px);
+}
+
+.magazine-editor-loading,
+.magazine-editor-error {
+  padding: 2rem 0;
+  color: var(--color-muted);
+}
+
+.magazine-editor-error {
+  color: #b42318;
+  margin-bottom: 1rem;
+}
+
+.magazine-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.magazine-editor-toolbar-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1rem;
+}
+
+.magazine-editor-utblikk-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.magazine-editor-utblikk-link:hover {
+  text-decoration: underline;
+}
+
+.magazine-editor-back {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.magazine-editor-back:hover {
+  text-decoration: underline;
+}
+
+.magazine-editor-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.magazine-editor-btn {
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.magazine-editor-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.magazine-editor-btn.primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.magazine-editor-btn.secondary {
+  background: transparent;
+}
+
+.magazine-editor-btn.warn {
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.35);
+  background: rgba(180, 35, 24, 0.06);
+}
+
+.magazine-editor-saved {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.magazine-editor-hint {
+  font-size: 0.88rem;
+  color: var(--color-muted);
+  margin: 0 0 0.5rem;
+}
+
+.magazine-editor-hint a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.magazine-editor-byline {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  margin: 0 0 1rem;
+}
+
+.magazine-editor-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 700;
+  padding: 0.5rem 0.25rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-bottom: 2px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.magazine-editor-title-input:focus {
+  outline: none;
+  border-bottom-color: var(--color-primary);
+}
+
+.magazine-editor-cover-block {
+  margin-bottom: 1.15rem;
+}
+
+.magazine-editor-cover-label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: 0.35rem;
+}
+
+.magazine-editor-cover-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.magazine-editor-cover-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.magazine-editor-cover-hint {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.magazine-editor-cover-preview {
+  margin-top: 0.5rem;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 200px;
+  background: #e8e6e3;
+  border: 1px solid var(--color-border);
+}
+
+.magazine-editor-cover-preview img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.magazine-editor-quill-wrap {
+  min-height: 420px;
+}
+
+.magazine-editor-quill-wrap .ql-container {
+  min-height: 320px;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  font-family: inherit;
+}
+
+.magazine-editor-quill-wrap .ql-editor {
+  min-height: 300px;
+}
+
+.magazine-editor-quill-wrap .ql-toolbar {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.magazine-editor-quill-wrap .ql-container {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-color: var(--color-border);
+  background: #fff;
+}
