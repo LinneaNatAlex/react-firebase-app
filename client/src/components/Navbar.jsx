@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { BRAND_NAME } from "../config/brand";
 import { MAGAZINE_NAME, MAGAZINE_PATH } from "../config/magazine";
@@ -9,6 +10,7 @@ import "../styles/Navbar.css";
 function Navbar() {
   const { currentUser, userData, logout } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   async function handleLogout() {
     try {
@@ -18,6 +20,35 @@ function Navbar() {
       console.error("Feil ved utlogging:", error);
     }
   }
+
+  const links = useMemo(() => {
+    const items = [
+      { to: "/jobs", label: "Finn jobber" },
+      { to: MAGAZINE_PATH, label: MAGAZINE_NAME },
+      { to: "/priser", label: "Priser" },
+    ];
+
+    if (
+      userData?.newspaperRole === "journalist" ||
+      userData?.newspaperRole === "editor"
+    ) {
+      items.push({ to: "/utblikk/redaksjon", label: "Utblikk-redaksjon" });
+    }
+
+    if (currentUser) {
+      if (userData?.userType === "company") {
+        items.push({ to: "/dashboard/company", label: "Dashboard" });
+        items.push({ to: `/bedrift/${currentUser.uid}`, label: "Min bedrift" });
+      } else {
+        items.push({ to: "/dashboard/user", label: "Min side" });
+      }
+      if (userData?.userType === "jobseeker") {
+        items.push({ to: "/profil/me", label: "Profil" });
+      }
+    }
+
+    return items;
+  }, [currentUser, userData]);
 
   const jobseekerProfileInitial =
     userData?.userType === "jobseeker"
@@ -34,37 +65,33 @@ function Navbar() {
         })()
       : "";
 
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    }
+    if (mobileMenuOpen) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileMenuOpen]);
+
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <Link to="/">{BRAND_NAME}</Link>
+        <Link to="/" onClick={() => setMobileMenuOpen(false)}>
+          {BRAND_NAME}
+        </Link>
       </div>
 
       <NavbarSearch />
 
       <div className="navbar-links">
-        <Link to="/jobs">Finn jobber</Link>
-        <Link to={MAGAZINE_PATH}>{MAGAZINE_NAME}</Link>
-        <Link to="/priser">Priser</Link>
-        {userData?.newspaperRole === "journalist" ||
-        userData?.newspaperRole === "editor" ? (
-          <Link to="/utblikk/redaksjon" title="Skriv og rediger i Utblikk">
-            Utblikk-redaksjon
+        {links.slice(0, 4).map((l) => (
+          <Link key={l.to} to={l.to}>
+            {l.label}
           </Link>
-        ) : null}
+        ))}
 
         {currentUser ? (
           <>
-            {userData?.userType === "company" ? (
-              <>
-                <Link to="/dashboard/company">Dashboard</Link>
-                <Link to={`/bedrift/${currentUser.uid}`}>Min bedrift</Link>
-              </>
-            ) : (
-              <>
-                <Link to="/dashboard/user">Min side</Link>
-              </>
-            )}
             <NavbarNotifications />
             <div className="navbar-account">
               {userData?.userType === "jobseeker" && (
@@ -72,6 +99,7 @@ function Navbar() {
                   to="/profil/me"
                   className="navbar-user-avatar-link"
                   title="Se offentlig profil"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   {userData?.profileImage || currentUser?.photoURL ? (
                     <img
@@ -105,7 +133,57 @@ function Navbar() {
             </Link>
           </>
         )}
+
+        <button
+          type="button"
+          className="navbar-mobile-toggle"
+          aria-label={mobileMenuOpen ? "Lukk meny" : "Åpne meny"}
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((v) => !v)}
+        >
+          <span className="navbar-mobile-toggle-bars" aria-hidden />
+        </button>
       </div>
+
+      {mobileMenuOpen ? (
+        <div
+          className="navbar-mobile-overlay"
+          role="presentation"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="navbar-mobile-menu"
+            role="dialog"
+            aria-label="Meny"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="navbar-mobile-menu-links">
+              {links.map((l) => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="navbar-mobile-link"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+            {!currentUser ? null : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  void handleLogout();
+                }}
+                className="navbar-mobile-logout"
+              >
+                Logg ut
+              </button>
+            )}
+          </div>
+        </div>
+      ) : null}
     </nav>
   );
 }

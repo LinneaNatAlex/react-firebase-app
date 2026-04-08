@@ -47,6 +47,7 @@ function CompanyDashboard() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("jobs");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showNewJobForm, setShowNewJobForm] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
@@ -529,20 +530,33 @@ function CompanyDashboard() {
         <div className="sidebar-header">
           <h2 className="sidebar-user-name">{userData?.companyName || "Min bedrift"}</h2>
         </div>
-        <nav className="sidebar-nav">
+        <button
+          type="button"
+          className={`sidebar-mobile-toggle${mobileNavOpen ? " is-open" : ""}`}
+          onClick={() => setMobileNavOpen((v) => !v)}
+          aria-expanded={mobileNavOpen}
+        >
+          Meny
+          <span className="chev" aria-hidden />
+        </button>
+        <nav className={`sidebar-nav${mobileNavOpen ? " is-open" : ""}`}>
           <p className="sidebar-label">Oversikt</p>
           <button
             className={activeTab === "jobs" ? "active" : ""}
             onClick={() => {
               setActiveTab("jobs");
               setSelectedJob(null);
+              setMobileNavOpen(false);
             }}
           >
             Stillinger ({jobs.length})
           </button>
           <button
             className={activeTab === "applicants" ? "active" : ""}
-            onClick={() => setActiveTab("applicants")}
+            onClick={() => {
+              setActiveTab("applicants");
+              setMobileNavOpen(false);
+            }}
           >
             Alle søkere ({applications.length})
           </button>
@@ -551,6 +565,7 @@ function CompanyDashboard() {
             onClick={() => {
               setActiveTab("library");
               setSelectedJob(null);
+              setMobileNavOpen(false);
             }}
           >
             Stillingsbibliotek ({jobLibraryItems.length})
@@ -560,6 +575,7 @@ function CompanyDashboard() {
             onClick={() => {
               setActiveTab("notifications");
               setSelectedJob(null);
+              setMobileNavOpen(false);
             }}
           >
             Varsler

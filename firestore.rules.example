@@ -85,6 +85,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.companyId == request.auth.uid;
     }
 
+    // Privatpersoners søknadsbibliotek (egen tekst – gjenbruk uten AI)
+    match /jobseekerCoverLetters/{itemId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.userId is string &&
+        request.resource.data.coverLetter is string;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     match /companyFollowers/{companyId}/users/{followerUid} {
       allow read: if true;
       allow create, delete: if request.auth != null && request.auth.uid == followerUid;

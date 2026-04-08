@@ -1,6 +1,6 @@
 // Admin Dashboard - oversikt og kontroll over plattformen
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
@@ -20,6 +20,7 @@ function AdminDashboard() {
   const [applications, setApplications] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
 
   // Sjekk admin-tilgang
@@ -132,29 +133,50 @@ function AdminDashboard() {
         <div className="sidebar-header">
           <h2 className="sidebar-user-name">Admin</h2>
         </div>
+        <button
+          type="button"
+          className={`sidebar-mobile-toggle${mobileNavOpen ? " is-open" : ""}`}
+          onClick={() => setMobileNavOpen((v) => !v)}
+          aria-expanded={mobileNavOpen}
+        >
+          Meny
+          <span className="chev" aria-hidden />
+        </button>
 
-        <nav className="sidebar-nav">
+        <nav className={`sidebar-nav${mobileNavOpen ? " is-open" : ""}`}>
           <button
             className={activeTab === "overview" ? "active" : ""}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => {
+              setActiveTab("overview");
+              setMobileNavOpen(false);
+            }}
           >
             Oversikt
           </button>
           <button
             className={activeTab === "users" ? "active" : ""}
-            onClick={() => setActiveTab("users")}
+            onClick={() => {
+              setActiveTab("users");
+              setMobileNavOpen(false);
+            }}
           >
             Brukere
           </button>
           <button
             className={activeTab === "jobs" ? "active" : ""}
-            onClick={() => setActiveTab("jobs")}
+            onClick={() => {
+              setActiveTab("jobs");
+              setMobileNavOpen(false);
+            }}
           >
             Stillinger
           </button>
           <button
             className={activeTab === "applications" ? "active" : ""}
-            onClick={() => setActiveTab("applications")}
+            onClick={() => {
+              setActiveTab("applications");
+              setMobileNavOpen(false);
+            }}
           >
             Søknader
           </button>
@@ -164,13 +186,19 @@ function AdminDashboard() {
 
           <button
             className={activeTab === "preview-company" ? "active" : ""}
-            onClick={() => setActiveTab("preview-company")}
+            onClick={() => {
+              setActiveTab("preview-company");
+              setMobileNavOpen(false);
+            }}
           >
             Bedrift-dashboard
           </button>
           <button
             className={activeTab === "preview-user" ? "active" : ""}
-            onClick={() => setActiveTab("preview-user")}
+            onClick={() => {
+              setActiveTab("preview-user");
+              setMobileNavOpen(false);
+            }}
           >
             Privatkonto-dashboard
           </button>

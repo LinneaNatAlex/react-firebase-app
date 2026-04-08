@@ -1,12 +1,17 @@
 // Stillingslisteside - viser alle aktive jobber, alle kan se denne
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { buildCoverLetterTemplate } from '../services/freeTemplates';
+import {
+  fetchCoverLettersFromApplications,
+  fetchJobseekerCoverLetters,
+  saveJobseekerCoverLetter,
+} from '../services/jobseekerCoverLetters';
 import '../styles/JobsPage.css';
 
 function JobsPage() {
@@ -26,6 +31,19 @@ function JobsPage() {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [userProfile, setUserProfile] = useState(null);
+  const [coverLetterLibrary, setCoverLetterLibrary] = useState([]);
+  const [coverLetterSearch, setCoverLetterSearch] = useState('');
+  const [coverLetterPick, setCoverLetterPick] = useState('');
+
+  const filteredCoverLetterLibrary = useMemo(() => {
+    const q = coverLetterSearch.trim().toLowerCase();
+    const base = coverLetterLibrary || [];
+    if (!q) return base;
+    return base.filter((x) => {
+      const hay = `${x.companyName || ''} ${x.jobTitle || ''} ${x.location || ''} ${x.coverLetter || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [coverLetterLibrary, coverLetterSearch]);
   async function fetchJobs() {
     try {
       setLoading(true);
@@ -94,6 +112,8 @@ function JobsPage() {
     setSelectedJob(job);
     setShowApplyForm(true);
     setCoverLetter('');
+    setCoverLetterSearch('');
+    setCoverLetterPick('');
   }
 
   function fillCoverLetterTemplate() {
@@ -149,6 +169,21 @@ function JobsPage() {
       };
 
       await addDoc(collection(db, 'applications'), applicationData);
+
+      // Lagre også i søknadsbibliotek (egen tekst – ikke AI)
+      try {
+        await saveJobseekerCoverLetter({
+          userId: currentUser.uid,
+          jobId: selectedJob.id,
+          jobTitle: selectedJob.title,
+          companyId: selectedJob.companyId,
+          companyName: selectedJob.companyName,
+          location: selectedJob.location,
+          coverLetter: coverLetter.trim(),
+        });
+      } catch (e) {
+        console.warn('Kunne ikke lagre søknad i bibliotek:', e);
+      }
 
       toast.success('Søknad sendt.');
       setSelectedJob(null);
@@ -368,6 +403,74 @@ function JobsPage() {
                     </button>
                   </div>
                 </div>
+
+                {currentUser?.uid ? (
+                  <div className="cover-letter-library">
+                    <div className="cover-letter-library-row">
+                      <input
+                        type="search"
+                        value={coverLetterSearch}
+                        onChange={(e) => setCoverLetterSearch(e.target.value)}
+                        placeholder="Hent fra tidligere søknader (søk)…"
+                        className="cover-letter-library-search"
+                      />
+                      <button
+                        type="button"
+                        className="template-btn-small"
+                        onClick={async () => {
+                          try {
+                            // Primært: hent fra tidligere sendte søknader (applications)
+                            const list = await fetchCoverLettersFromApplications(currentUser.uid, 80);
+                            if (list.length > 0) {
+                              setCoverLetterLibrary(list);
+                              return;
+                            }
+
+                            // Fallback: egen bibliotek-samling (for nye lagringer)
+                            const lib = await fetchJobseekerCoverLetters(currentUser.uid, 60);
+                            setCoverLetterLibrary(lib);
+                            if (lib.length === 0) toast.info('Ingen lagrede søknader ennå.');
+                          } catch (e) {
+                            console.error(e);
+                            toast.error('Kunne ikke hente bibliotek.');
+                          }
+                        }}
+                      >
+                        Hent
+                      </button>
+                    </div>
+                    {coverLetterLibrary.length > 0 ? (
+                      <div className="cover-letter-library-row">
+                        <select
+                          value={coverLetterPick}
+                          onChange={(e) => setCoverLetterPick(e.target.value)}
+                          className="cover-letter-library-select"
+                        >
+                          <option value="">Velg tidligere søknad…</option>
+                          {filteredCoverLetterLibrary.map((x) => (
+                            <option key={x.id} value={x.id}>
+                              {(x.companyName || 'Bedrift') + ' — ' + (x.jobTitle || 'Stilling')}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="template-btn-small"
+                          disabled={!coverLetterPick}
+                          onClick={() => {
+                            const picked = coverLetterLibrary.find((x) => x.id === coverLetterPick);
+                            if (!picked?.coverLetter) return;
+                            setCoverLetter(String(picked.coverLetter));
+                            toast.success('Tidligere søknad lagt inn – tilpass før du sender.');
+                          }}
+                        >
+                          Bruk tekst
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <textarea
                   value={coverLetter}
                   onChange={(e) => setCoverLetter(e.target.value)}

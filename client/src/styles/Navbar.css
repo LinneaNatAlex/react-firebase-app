@@ -204,6 +204,106 @@
   margin-left: auto;
 }
 
+.navbar-mobile-toggle {
+  display: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.navbar-mobile-toggle:hover {
+  background: var(--color-tint);
+  border-color: var(--color-tint-strong);
+}
+
+.navbar-mobile-toggle-bars {
+  display: block;
+  width: 1.15rem;
+  height: 2px;
+  background: var(--color-primary);
+  margin: 0 auto;
+  position: relative;
+}
+
+.navbar-mobile-toggle-bars::before,
+.navbar-mobile-toggle-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+}
+
+.navbar-mobile-toggle-bars::before {
+  top: -6px;
+}
+
+.navbar-mobile-toggle-bars::after {
+  top: 6px;
+}
+
+.navbar-mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  z-index: 1500;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.navbar-mobile-menu {
+  width: min(92vw, 360px);
+  height: 100%;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -16px 0 40px rgba(15, 23, 42, 0.16);
+  padding: 0.9rem 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.navbar-mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.navbar-mobile-link {
+  display: block;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.navbar-mobile-link:hover {
+  background: var(--color-tint);
+}
+
+.navbar-mobile-logout {
+  margin-top: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.navbar-mobile-logout:hover {
+  background: var(--color-tint);
+  border-color: var(--color-tint-strong);
+}
+
 .navbar-notifications {
   position: relative;
   flex-shrink: 0;
@@ -520,5 +620,11 @@
 
   .navbar-links a:not(.navbar-button) {
     display: none;
+  }
+
+  .navbar-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
