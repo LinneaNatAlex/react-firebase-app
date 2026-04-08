@@ -553,7 +553,7 @@ function UserDashboard() {
                 setMobileNavOpen(false);
               }}
             >
-              Varsler
+              Varslingsinnstillinger
             </button>
           </div>
 

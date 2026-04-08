@@ -179,10 +179,41 @@ export async function isCompanyFollowingCompany(db, followerCompanyId, targetCom
   return snap.exists();
 }
 
+/**
+ * Brukere som har bedt om kontosletting (før fristen) skal ikke vises i andres vennelister.
+ * Ved innlogging innen fristen fjernes feltene — da vises de igjen.
+ */
+export async function isUserPendingAccountDeletion(db, uid) {
+  if (!uid) return false;
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return false;
+    const d = snap.data();
+    return Boolean(d.accountDeletionDeadline);
+  } catch {
+    return false;
+  }
+}
+
+/** Filtrer bort uid-er der konto er under sletting (grace period). */
+export async function filterFriendUidsVisible(db, uids) {
+  if (!uids?.length) return [];
+  const unique = [...new Set(uids)];
+  const checks = await Promise.all(
+    unique.map(async (uid) => {
+      const pending = await isUserPendingAccountDeletion(db, uid);
+      return pending ? null : uid;
+    }),
+  );
+  return checks.filter(Boolean);
+}
+
 export async function getFriendCount(db, userId) {
   try {
-    const snap = await getCountFromServer(collection(db, "users", userId, "friends"));
-    return snap.data().count;
+    const snap = await getDocs(collection(db, "users", userId, "friends"));
+    const raw = snap.docs.map((d) => d.id);
+    const visible = await filterFriendUidsVisible(db, raw);
+    return visible.length;
   } catch {
     return 0;
   }
@@ -197,6 +228,7 @@ export async function areFriends(db, uidA, uidB) {
 /** @returns {Promise<'none'|'pending_out'|'pending_in'|'friends'>} */
 export async function getFriendshipState(db, viewerUid, profileUid) {
   if (!viewerUid || !profileUid || viewerUid === profileUid) return "none";
+  if (await isUserPendingAccountDeletion(db, profileUid)) return "none";
   if (await areFriends(db, viewerUid, profileUid)) return "friends";
   const pk = pairKey(viewerUid, profileUid);
   const reqSnap = await getDoc(doc(db, "friendRequests", pk));
@@ -311,23 +343,25 @@ export async function listFollowedCompaniesForUser(db, userId, max = 20) {
   }
 }
 
-/** Venner (preview) – uid-liste */
+/** Venner (preview) – uid-liste (uten brukere under kontosletting) */
 export async function listFriendUidsPreview(db, userId, max = 12) {
   try {
     const snap = await getDocs(
       query(collection(db, "users", userId, "friends"), limit(max)),
     );
-    return snap.docs.map((d) => d.id);
+    const raw = snap.docs.map((d) => d.id);
+    return filterFriendUidsVisible(db, raw);
   } catch {
     return [];
   }
 }
 
-/** Alle venner (uid-liste), til administrasjon på Min side. */
+/** Alle synlige venner (uid-liste), til administrasjon på Min side. */
 export async function listAllFriendUids(db, userId) {
   try {
     const snap = await getDocs(collection(db, "users", userId, "friends"));
-    return snap.docs.map((d) => d.id);
+    const raw = snap.docs.map((d) => d.id);
+    return filterFriendUidsVisible(db, raw);
   } catch {
     return [];
   }
@@ -350,7 +384,7 @@ export async function fetchUserLabelsForIds(db, uids) {
   return out;
 }
 
-/** Venner på offentlig profil: navn + profilbilde (data-URL) fra profiles. */
+/** Venner på offentlig profil: navn + profilbilde (data-URL) fra profiles. Forventer uid-er som allerede er filtrert (bruk listFriendUidsPreview / listAllFriendUids). */
 export async function fetchFriendAvatarsForUids(db, uids) {
   const labels = await fetchUserLabelsForIds(db, uids);
   const out = [];
@@ -445,11 +479,14 @@ export function subscribeIncomingFriendRequests(db, recipientUid, callback) {
   );
   return onSnapshot(
     qy,
-    (snap) => {
+    async (snap) => {
       const rows = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((x) => x.status === "pending");
-      callback(rows);
+      const fromUids = rows.map((r) => r.fromUid).filter(Boolean);
+      const visibleSet = new Set(await filterFriendUidsVisible(db, fromUids));
+      const filtered = rows.filter((r) => visibleSet.has(r.fromUid));
+      callback(filtered);
     },
     (err) => {
       console.warn("subscribeIncomingFriendRequests", err);

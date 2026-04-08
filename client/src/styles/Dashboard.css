@@ -2850,6 +2850,25 @@ a.application-company-link:hover {
   background: rgba(160, 55, 55, 0.1);
 }
 
+.account-deletion-modal-lead {
+  margin: 0;
+  padding: 0;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.account-deletion-modal-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.account-deletion-modal-list li + li {
+  margin-top: 0.45rem;
+}
+
 .account-deletion-button:disabled {
   opacity: 0.65;
   cursor: not-allowed;

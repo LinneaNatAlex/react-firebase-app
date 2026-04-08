@@ -578,7 +578,7 @@ function CompanyDashboard() {
               setMobileNavOpen(false);
             }}
           >
-            Varsler
+            Varslingsinnstillinger
           </button>
           <p className="sidebar-label sidebar-label--spaced">Profil</p>
           <Link className="nav-item" to="/dashboard/company/profil">
