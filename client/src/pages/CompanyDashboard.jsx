@@ -1205,6 +1205,30 @@ function CompanyDashboard() {
                     Søkeren sendte ikke med søknadstekst
                   </p>
                 )}
+                {selectedApplicant.cvPdfUrl ? (
+                  <p className="template-hint" style={{ marginTop: "0.75rem" }}>
+                    CV/PDF:{" "}
+                    <a
+                      href={selectedApplicant.cvPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {selectedApplicant.cvPdfName || "Åpne PDF"}
+                    </a>
+                  </p>
+                ) : null}
+                {selectedApplicant.coverLetterPdfUrl ? (
+                  <p className="template-hint" style={{ marginTop: "0.75rem" }}>
+                    PDF-vedlegg:{" "}
+                    <a
+                      href={selectedApplicant.coverLetterPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {selectedApplicant.coverLetterPdfName || "Åpne PDF"}
+                    </a>
+                  </p>
+                ) : null}
               </div>
 
               <div className="detail-actions">

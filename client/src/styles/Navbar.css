@@ -374,6 +374,15 @@
   overflow: hidden;
 }
 
+@media (max-width: 420px) {
+  /* På veldig smale skjermer: sørg for at dropdown ikke "krasjer" i kanten */
+  .navbar-notifications-dropdown {
+    right: -0.25rem;
+    width: min(calc(100vw - 1.5rem), 22rem);
+    border-radius: 14px;
+  }
+}
+
 .navbar-notifications-header {
   display: flex;
   align-items: center;

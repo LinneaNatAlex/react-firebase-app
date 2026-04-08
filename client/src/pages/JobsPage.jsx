@@ -5,7 +5,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { collection, getDocs, addDoc, query, where, doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { buildCoverLetterTemplate } from '../services/freeTemplates';
 import {
   fetchCoverLettersFromApplications,
@@ -13,6 +13,7 @@ import {
   saveJobseekerCoverLetter,
 } from '../services/jobseekerCoverLetters';
 import '../styles/JobsPage.css';
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 
 function JobsPage() {
   const { currentUser, userData } = useAuth();
@@ -30,6 +31,10 @@ function JobsPage() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
+  const [applicationCvMode, setApplicationCvMode] = useState('profile'); // 'profile' | 'pdf'
+  const [cvPdf, setCvPdf] = useState(null);
+  const [coverLetterPdf, setCoverLetterPdf] = useState(null);
+  const [pdfUploading, setPdfUploading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [coverLetterLibrary, setCoverLetterLibrary] = useState([]);
   const [coverLetterSearch, setCoverLetterSearch] = useState('');
@@ -112,6 +117,9 @@ function JobsPage() {
     setSelectedJob(job);
     setShowApplyForm(true);
     setCoverLetter('');
+    setApplicationCvMode('profile');
+    setCvPdf(null);
+    setCoverLetterPdf(null);
     setCoverLetterSearch('');
     setCoverLetterPick('');
   }
@@ -133,9 +141,14 @@ function JobsPage() {
   async function handleApply() {
     if (!currentUser || !selectedJob) return;
 
-    // Sjekk at søknadstekst er fylt ut
-    if (!coverLetter || coverLetter.trim().length < 10) {
+    // Sjekk at søknadstekst er fylt ut (hvis ikke PDF-søknad brukes)
+    const coverText = String(coverLetter || '').trim();
+    if (applicationCvMode !== 'pdf' && coverText.length < 10) {
       toast.warning('Vennligst skriv en søknadstekst (minst 10 tegn)');
+      return;
+    }
+    if (applicationCvMode === 'pdf' && !cvPdf) {
+      toast.warning('Velg en PDF å legge ved (CV/søknad).');
       return;
     }
 
@@ -164,9 +177,72 @@ function JobsPage() {
         status: 'pending',
         applicantName: `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim(),
         applicantEmail: currentUser.email,
-        coverLetter: coverLetter.trim(),
-        profile: userProfile || null
+        coverLetter: coverText,
+        coverLetterPdfUrl: '',
+        coverLetterPdfName: '',
+        cvAttachmentType: applicationCvMode === 'pdf' ? 'pdf' : 'profile',
+        cvPdfUrl: '',
+        cvPdfName: '',
+        profile: applicationCvMode === 'profile' ? (userProfile || null) : null,
       };
+
+      if (applicationCvMode === 'pdf' && cvPdf) {
+        if (cvPdf.type !== 'application/pdf') {
+          toast.warning('CV-vedlegg må være en PDF-fil.');
+          return;
+        }
+        if (cvPdf.size > 5 * 1024 * 1024) {
+          toast.warning('CV-vedlegg kan være maks 5 MB.');
+          return;
+        }
+
+        setPdfUploading(true);
+        try {
+          const safeName = cvPdf.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+          const path = `applications/${currentUser.uid}/${selectedJob.id}/cv_${Date.now()}_${safeName}`;
+          const fileRef = storageRef(storage, path);
+          await uploadBytes(fileRef, cvPdf, { contentType: 'application/pdf' });
+          const url = await getDownloadURL(fileRef);
+          applicationData.cvPdfUrl = url;
+          applicationData.cvPdfName = cvPdf.name;
+        } catch (e) {
+          console.error('CV PDF upload:', e);
+          toast.error('Kunne ikke laste opp PDF. Prøv igjen.');
+          return;
+        } finally {
+          setPdfUploading(false);
+        }
+      }
+
+      if (coverLetterPdf) {
+        if (coverLetterPdf.type !== 'application/pdf') {
+          toast.warning('PDF-vedlegg må være en PDF-fil.');
+          return;
+        }
+        if (coverLetterPdf.size > 5 * 1024 * 1024) {
+          toast.warning('PDF-vedlegg kan være maks 5 MB.');
+          return;
+        }
+
+        setPdfUploading(true);
+        try {
+          const safeName = coverLetterPdf.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+          const path = `applications/${currentUser.uid}/${selectedJob.id}/${Date.now()}_${safeName}`;
+          const fileRef = storageRef(storage, path);
+          await uploadBytes(fileRef, coverLetterPdf, {
+            contentType: 'application/pdf',
+          });
+          const url = await getDownloadURL(fileRef);
+          applicationData.coverLetterPdfUrl = url;
+          applicationData.coverLetterPdfName = coverLetterPdf.name;
+        } catch (e) {
+          console.error('PDF upload:', e);
+          toast.error('Kunne ikke laste opp PDF. Prøv igjen.');
+          return;
+        } finally {
+          setPdfUploading(false);
+        }
+      }
 
       await addDoc(collection(db, 'applications'), applicationData);
 
@@ -189,6 +265,8 @@ function JobsPage() {
       setSelectedJob(null);
       setShowApplyForm(false);
       setCoverLetter('');
+      setCvPdf(null);
+      setCoverLetterPdf(null);
       
       // Gå til dashboard etter 1.5 sekunder
       setTimeout(() => {
@@ -391,8 +469,53 @@ function JobsPage() {
 
             <div className="apply-form">
               <div className="form-group">
+                <label>Vedlegg</label>
+                <div className="apply-attach-mode">
+                  <label className="apply-attach-option">
+                    <input
+                      type="radio"
+                      name="cv-mode"
+                      value="profile"
+                      checked={applicationCvMode === 'profile'}
+                      onChange={() => setApplicationCvMode('profile')}
+                    />
+                    Bruk CV-profilen min
+                  </label>
+                  <label className="apply-attach-option">
+                    <input
+                      type="radio"
+                      name="cv-mode"
+                      value="pdf"
+                      checked={applicationCvMode === 'pdf'}
+                      onChange={() => setApplicationCvMode('pdf')}
+                    />
+                    Last opp PDF (CV/søknad)
+                  </label>
+                </div>
+                {applicationCvMode === 'pdf' ? (
+                  <div className="apply-attach-pdf">
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => setCvPdf(e.target.files?.[0] || null)}
+                    />
+                    <p className="form-hint">
+                      {cvPdf ? `Valgt: ${cvPdf.name}` : 'Velg en PDF du vil sende i stedet for CV-profilen.'}
+                      {pdfUploading ? ' (laster opp...)' : ''}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="form-hint">
+                    Vi legger ved profilen/CV-en du har fylt ut på «Min side».
+                  </p>
+                )}
+              </div>
+
+              <div className="form-group">
                 <div className="cover-letter-header">
-                  <label>Søknadstekst *</label>
+                  <label>
+                    Søknadstekst{applicationCvMode === 'pdf' ? ' (valgfritt)' : ' *'}
+                  </label>
                   <div className="cover-letter-actions">
                     <button
                       type="button"
@@ -476,12 +599,27 @@ function JobsPage() {
                   onChange={(e) => setCoverLetter(e.target.value)}
                   placeholder="Fortell hvorfor du er interessert i stillingen og hva du kan bidra med..."
                   rows={8}
-                  required
+                  required={applicationCvMode !== 'pdf'}
                 />
                 <p className="form-hint">
                   {coverLetter.length > 0 
                     ? `${coverLetter.length} tegn` 
                     : 'Skriv selv eller bruk «Lag utkast fra CV» (lokalt, gratis).'}
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label>Legg ved vedlegg (valgfritt)</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => setCoverLetterPdf(e.target.files?.[0] || null)}
+                />
+                <p className="form-hint">
+                  {coverLetterPdf
+                    ? `Valgt: ${coverLetterPdf.name}`
+                    : 'Legg ved vedlegg om du ønsker.'}
+                  {pdfUploading ? ' (laster opp...)' : ''}
                 </p>
               </div>
 
@@ -495,8 +633,9 @@ function JobsPage() {
                 <button 
                   className="apply-button"
                   onClick={handleApply}
+                  disabled={pdfUploading}
                 >
-                  Send søknad
+                  {pdfUploading ? 'Laster opp…' : 'Send søknad'}
                 </button>
               </div>
             </div>
