@@ -32,12 +32,22 @@ export function useAuth() {
 
 // Hent bruker-dokument + profilbilde fra CV-profil (samme konto)
 async function fetchUserWithProfilePhoto(uid) {
-  const userDoc = await getDoc(doc(db, "users", uid));
+  let userDoc;
+  try {
+    userDoc = await getDoc(doc(db, "users", uid));
+  } catch (e) {
+    console.warn("Auth: kunne ikke lese users-dokument", e);
+    return null;
+  }
   if (!userDoc.exists()) return null;
   const data = { ...userDoc.data() };
-  const profileDoc = await getDoc(doc(db, "profiles", uid));
-  if (profileDoc.exists() && profileDoc.data().profileImage) {
-    data.profileImage = profileDoc.data().profileImage;
+  try {
+    const profileDoc = await getDoc(doc(db, "profiles", uid));
+    if (profileDoc.exists() && profileDoc.data().profileImage) {
+      data.profileImage = profileDoc.data().profileImage;
+    }
+  } catch (e) {
+    console.warn("Auth: kunne ikke lese profil (profilbilde)", e);
   }
   return data;
 }
@@ -114,6 +124,17 @@ export function AuthProvider({ children }) {
 
   // Kjører når appen starter - sjekker om bruker allerede er logget inn
   useEffect(() => {
+    let settled = false;
+    const failOpenMs = 10000;
+    const failOpenTimer = setTimeout(() => {
+      if (!settled) {
+        console.warn(
+          "Auth: onAuthStateChanged tok for lang tid – viser appen likevel (f.eks. innebygd nettleser).",
+        );
+        setLoading(false);
+      }
+    }, failOpenMs);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
 
@@ -123,6 +144,8 @@ export function AuthProvider({ children }) {
           const result = await resolveAccountDeletionOnLogin(db, user, merged);
           if (result === "purged") {
             setUserData(null);
+            settled = true;
+            clearTimeout(failOpenTimer);
             setLoading(false);
             return;
           }
@@ -135,10 +158,15 @@ export function AuthProvider({ children }) {
         setUserData(null);
       }
 
+      settled = true;
+      clearTimeout(failOpenTimer);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      clearTimeout(failOpenTimer);
+      unsubscribe();
+    };
   }, []);
 
   // Disse verdiene blir tilgjengelige via useAuth()
@@ -154,9 +182,9 @@ export function AuthProvider({ children }) {
     loading,
   };
 
+  // Alltid rendre children: å skjule hele appen til auth er klar gir tom skjerm i noen
+  // innebygde nettlesere (f.eks. Cursor) hvis Firebase Auth/IndexedDB henger eller er blokkert.
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 }

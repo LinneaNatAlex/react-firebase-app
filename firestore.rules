@@ -1,5 +1,6 @@
-// Synk med rot-filen firestore.rules (deploy: firebase deploy --only firestore:rules).
-// Du kan også lime innholdet inn i Firebase Console → Firestore → Regler.
+// Firestore-regler for denne appen. Deploy:
+//   firebase deploy --only firestore:rules
+// (krever firebase login og .firebaserc med prosjekt-id)
 
 rules_version = '2';
 service cloud.firestore {
@@ -20,8 +21,6 @@ service cloud.firestore {
       return request.auth != null && newspaperRole() == 'editor';
     }
 
-    // Utblikk-artikler: publiserte er lesbare for alle; kladder for forfatter eller redaktør.
-    // Journalist kan kun oppdatere/slette egne kladder (status forblir draft). Publisering kun for redaktør.
     match /magazineArticles/{articleId} {
       allow read: if resource.data.status == 'published' ||
         (request.auth != null && (
@@ -34,7 +33,6 @@ service cloud.firestore {
         isNewspaperStaff() &&
         request.resource.data.status == 'draft';
 
-      // Redaktør/journalist-oppdateringer ELLER anonym +1 visning (kun viewCount endres)
       allow update: if request.auth != null && (
         isNewspaperEditor() ||
         (
@@ -72,13 +70,11 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null && request.auth.uid == companyId;
     }
 
-    // CV / offentlig profil (brukes av AuthContext, Min side, offentlige profiler)
     match /profiles/{userId} {
       allow read: if true;
       allow create, update, delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Stillinger og søknader (må deployes til Firestore for at dashboard skal fungere)
     match /jobs/{jobId} {
       allow read: if true;
       allow create: if request.auth != null &&
@@ -100,7 +96,6 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid;
     }
 
-    // Bedriftens stillingsbibliotek (egen lagret tekst – ikke AI)
     match /companyJobLibrary/{itemId} {
       allow read: if request.auth != null && resource.data.companyId == request.auth.uid;
       allow create: if request.auth != null &&
@@ -112,7 +107,6 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.companyId == request.auth.uid;
     }
 
-    // Privatpersoners søknadsbibliotek (egen tekst – gjenbruk uten AI)
     match /jobseekerCoverLetters/{itemId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null &&
@@ -152,11 +146,12 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Brukerdokument: offentlig lesbar (profilsider). Må være aktivt i Console for at auth/varsler virker.
+    // Brukerdokument: offentlig lesbar (profilsider, søk). AuthContext + LoginPage krever dette.
     match /users/{userId} {
       allow read: if true;
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && request.auth.uid == userId;
+      // Egen konto (kontosletting); ikke admin – AdminDashboard trenger egne regler/Cloud Functions for full tilgang
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
