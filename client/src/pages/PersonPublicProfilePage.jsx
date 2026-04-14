@@ -21,7 +21,10 @@ import {
   unfollowCompanyAsUser,
 } from '../services/social';
 import PublicListModal from '../components/PublicListModal';
+import { splitProfileIntroParagraphs } from '../utils/splitProfileIntroParagraphs';
 import '../styles/CompanyProfilePage.css';
+
+// «Om meg» (publicIntro): splitProfileIntroParagraphs + .person-public-body-text--prose (CompanyProfilePage.css)
 
 function PersonPublicProfilePage() {
   const { userId } = useParams();
@@ -45,6 +48,12 @@ function PersonPublicProfilePage() {
   const isOwnProfile = Boolean(currentUser?.uid && userId && currentUser.uid === userId);
   const viewerIsJobseeker = userData?.userType === 'jobseeker';
   const profileIsJobseeker = userRow?.userType === 'jobseeker';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('person-public-hide-scrollbar');
+    return () => root.classList.remove('person-public-hide-scrollbar');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -354,10 +363,38 @@ function PersonPublicProfilePage() {
               <p className="person-public-headline">{publicHeadline}</p>
             ) : null}
 
-            <div className="person-public-cv-row">
+            <div className="person-public-cv-row person-public-cv-row--split">
               <Link to={`/profil/${userId}/cv`} className="person-public-cv-cta">
                 {hasCvContent ? 'Se full CV →' : 'Åpne CV-siden →'}
               </Link>
+              {isOwnProfile ? (
+                <Link
+                  to={`/profil/${userId}/cv#referanser`}
+                  className="person-public-cv-cta person-public-cv-cta--secondary"
+                >
+                  Be om skriftlig referanse →
+                </Link>
+              ) : null}
+              {currentUser && !isOwnProfile && userData?.userType === 'company' && profileIsJobseeker ? (
+                <Link
+                  to={`/meldinger?with=${userId}`}
+                  className="person-public-cv-cta person-public-cv-cta--secondary"
+                >
+                  Melding til søker →
+                </Link>
+              ) : null}
+              {currentUser &&
+              !isOwnProfile &&
+              viewerIsJobseeker &&
+              profileIsJobseeker &&
+              friendshipState === 'friends' ? (
+                <Link
+                  to={`/meldinger?with=${userId}`}
+                  className="person-public-cv-cta person-public-cv-cta--secondary"
+                >
+                  Send melding →
+                </Link>
+              ) : null}
             </div>
 
             {!socialLoading && (
@@ -381,78 +418,95 @@ function PersonPublicProfilePage() {
               </div>
             )}
 
-            {currentUser && !isOwnProfile && viewerIsJobseeker && (
-              <div className="person-public-friend-actions">
-                {friendshipState === 'none' && (
-                  <button
-                    type="button"
-                    className="person-public-friend-btn person-public-friend-btn--primary"
-                    onClick={handleSendRequest}
-                    disabled={friendBusy}
-                  >
-                    Send venneforespørsel
-                  </button>
-                )}
-                {friendshipState === 'pending_out' && (
-                  <button
-                    type="button"
-                    className="person-public-friend-btn"
-                    onClick={handleCancelRequest}
-                    disabled={friendBusy}
-                  >
-                    Trekk forespørsel
-                  </button>
-                )}
-                {friendshipState === 'pending_in' && (
-                  <div className="person-public-friend-row">
-                    <button
-                      type="button"
-                      className="person-public-friend-btn person-public-friend-btn--primary"
-                      onClick={handleAccept}
-                      disabled={friendBusy}
-                    >
-                      Godta venneforespørsel
-                    </button>
-                    <button
-                      type="button"
-                      className="person-public-friend-btn"
-                      onClick={handleDecline}
-                      disabled={friendBusy}
-                    >
-                      Avslå
-                    </button>
+            {(() => {
+              const showFriendBlock =
+                currentUser && !isOwnProfile && viewerIsJobseeker;
+              const showChips = Boolean(profile?.location || profile?.phone);
+              if (!showFriendBlock && !showChips) return null;
+              return (
+                <>
+                  <div className="person-public-inline-meta">
+                    {showFriendBlock ? (
+                      <div className="person-public-friend-actions">
+                        {friendshipState === 'none' && (
+                          <button
+                            type="button"
+                            className="person-public-friend-btn person-public-friend-btn--primary"
+                            onClick={handleSendRequest}
+                            disabled={friendBusy}
+                          >
+                            Send venneforespørsel
+                          </button>
+                        )}
+                        {friendshipState === 'pending_out' && (
+                          <button
+                            type="button"
+                            className="person-public-friend-btn"
+                            onClick={handleCancelRequest}
+                            disabled={friendBusy}
+                          >
+                            Trekk forespørsel
+                          </button>
+                        )}
+                        {friendshipState === 'pending_in' && (
+                          <div className="person-public-friend-row">
+                            <button
+                              type="button"
+                              className="person-public-friend-btn person-public-friend-btn--primary"
+                              onClick={handleAccept}
+                              disabled={friendBusy}
+                            >
+                              Godta venneforespørsel
+                            </button>
+                            <button
+                              type="button"
+                              className="person-public-friend-btn"
+                              onClick={handleDecline}
+                              disabled={friendBusy}
+                            >
+                              Avslå
+                            </button>
+                          </div>
+                        )}
+                        {friendshipState === 'friends' && (
+                          <span className="person-public-friend-badge">
+                            Dere er venner
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                    {showChips ? (
+                      <div className="person-public-chips">
+                        {profile?.location ? (
+                          <span className="person-public-chip">
+                            <span className="person-public-chip-label">Sted</span>
+                            {profile.location}
+                          </span>
+                        ) : null}
+                        {profile?.phone ? (
+                          <span className="person-public-chip">
+                            <span className="person-public-chip-label">Tlf.</span>
+                            {profile.phone}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
-                )}
-                {friendshipState === 'friends' && (
-                  <div className="person-public-friend-row">
-                    <span className="person-public-friend-badge">Dere er venner</span>
-                    <button
-                      type="button"
-                      className="person-public-friend-btn person-public-friend-btn--danger"
-                      onClick={handleRemoveFriend}
-                      disabled={friendBusy}
-                    >
-                      Fjern venn
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="person-public-chips">
-              {profile?.location ? (
-                <span className="person-public-chip">
-                  <span className="person-public-chip-label">Sted</span>
-                  {profile.location}
-                </span>
-              ) : null}
-              {profile?.phone ? (
-                <span className="person-public-chip">
-                  <span className="person-public-chip-label">Tlf.</span>
-                  {profile.phone}
-                </span>
-              ) : null}
-            </div>
+                  {showFriendBlock && friendshipState === 'friends' ? (
+                    <div className="person-public-remove-friend">
+                      <button
+                        type="button"
+                        className="person-public-friend-remove-link"
+                        onClick={handleRemoveFriend}
+                        disabled={friendBusy}
+                      >
+                        Fjern venn
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              );
+            })()}
             <div className="person-public-links">
               {profile?.linkedIn ? (
                 <a
@@ -491,7 +545,15 @@ function PersonPublicProfilePage() {
             {publicIntro ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Om meg</h2>
-                <div className="person-public-body-text">{publicIntro}</div>
+                {/* Full CV ligger på /profil/:id/cv; samme tekst-utils som der */}
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {splitProfileIntroParagraphs(publicIntro).map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
               </section>
             ) : null}
 
@@ -515,32 +577,38 @@ function PersonPublicProfilePage() {
           </div>
 
           <aside className="person-public-aside" aria-label="Kort om profilen">
-            {friendAvatars.length > 0 ? (
+            {friendCount > 0 ? (
               <div className="person-public-aside-card person-public-aside-card--friends">
                 <h3 className="person-public-aside-title">Venner</h3>
                 <p className="person-public-friends-hint">
-                  {friendCount > friendAvatars.length
+                  {friendAvatars.length > 0 && friendCount > friendAvatars.length
                     ? `Viser ${friendAvatars.length} av ${friendCount}`
                     : `${friendCount} ${friendCount === 1 ? 'venn' : 'venner'}`}
                 </p>
-                <div className="person-public-friends-grid">
-                  {friendAvatars.map((f) => (
-                    <Link
-                      key={f.uid}
-                      to={`/profil/${f.uid}`}
-                      className="person-public-friend-avatar"
-                      title={f.label}
-                    >
-                      {f.photoUrl ? (
-                        <img src={f.photoUrl} alt="" />
-                      ) : (
-                        <span className="person-public-friend-avatar-fallback" aria-hidden>
-                          {f.label.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </Link>
-                  ))}
-                </div>
+                {friendAvatars.length > 0 ? (
+                  <div className="person-public-friends-grid">
+                    {friendAvatars.map((f) => (
+                      <Link
+                        key={f.uid}
+                        to={`/profil/${f.uid}`}
+                        className="person-public-friend-avatar"
+                        title={f.label}
+                      >
+                        {f.photoUrl ? (
+                          <img src={f.photoUrl} alt="" />
+                        ) : (
+                          <span className="person-public-friend-avatar-fallback" aria-hidden>
+                            {f.label.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="person-public-friends-empty">
+                    Forhåndsvisning av venner lastet ikke akkurat nå – antallet over stemmer likevel.
+                  </p>
+                )}
               </div>
             ) : null}
 

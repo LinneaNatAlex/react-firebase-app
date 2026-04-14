@@ -10,6 +10,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   deleteDoc,
   doc,
   writeBatch,
@@ -20,7 +21,8 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { deleteUser, signOut } from "firebase/auth";
-import { auth } from "../firebase";
+import { deleteObject, ref as storageRef } from "firebase/storage";
+import { auth, storage } from "../firebase";
 
 const DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -75,6 +77,12 @@ export async function purgeUserAccountData(db, uid, userType) {
     await deleteSubcollectionDocs(db, "users", uid, "notifications");
   } catch (e) {
     console.warn("purge notifications", e);
+  }
+
+  try {
+    await deleteSubcollectionDocs(db, "users", uid, "blockedUsers");
+  } catch (e) {
+    console.warn("purge blockedUsers", e);
   }
 
   try {
@@ -145,6 +153,32 @@ export async function purgeUserAccountData(db, uid, userType) {
     await deleteQueryDocs(db, appsUser);
   } catch (e) {
     console.warn("purge applications by userId", e);
+  }
+
+  try {
+    const profSnap = await getDoc(doc(db, "profiles", uid));
+    if (profSnap.exists()) {
+      const atts = profSnap.data().cvPdfAttachments;
+      if (Array.isArray(atts)) {
+        for (const a of atts) {
+          if (a?.storagePath) {
+            try {
+              await deleteObject(storageRef(storage, a.storagePath));
+            } catch (e) {
+              console.warn("purge profile pdf storage", e);
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("purge profile pdf", e);
+  }
+
+  try {
+    await deleteSubcollectionDocs(db, "profiles", uid, "publicPdfs");
+  } catch (e) {
+    console.warn("purge profiles publicPdfs", e);
   }
 
   try {

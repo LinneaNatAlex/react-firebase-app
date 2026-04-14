@@ -99,8 +99,25 @@ export default function IncomingReferencesPanel() {
     setBusyKey(null);
   }
 
-  if (!currentUser?.uid || rows.length === 0) {
+  if (!currentUser?.uid) {
     return null;
+  }
+
+  if (rows.length === 0) {
+    return (
+      <section
+        id="incoming-references"
+        className="incoming-ref-panel incoming-ref-panel--empty"
+        aria-labelledby="incoming-ref-title"
+      >
+        <h2 id="incoming-ref-title">Referanser å skrive</h2>
+        <p className="incoming-ref-lead">
+          Ingen åpne forespørsler. Når en venn ber deg om skriftlig referanse (dere må være
+          venner), vises navnet her og du kan skrive i et felt og trykke{" "}
+          <strong>Publiser referansen</strong>.
+        </p>
+      </section>
+    );
   }
 
   return (
@@ -112,12 +129,16 @@ export default function IncomingReferencesPanel() {
       <h2 id="incoming-ref-title">Referanser å skrive</h2>
       <p className="incoming-ref-lead">
         Venner kan be deg om en kort, skriftlig referanse. Den vises på CV-en deres
-        for arbeidsgivere. Du må ha vært venner da de sendte forespørselen.
+        for arbeidsgivere. Du må ha vært venner da de sendte forespørselen. Skriv i feltet
+        under og trykk <strong>Publiser referansen</strong> når du er ferdig (minst {MIN_BODY}{" "}
+        tegn).
       </p>
       <ul className="incoming-ref-list">
         {rows.map((r) => {
           const name = names[r.subjectUid] || "…";
           const draft = bodies[r.subjectUid] ?? "";
+          const rowBusy =
+            busyKey === `pub-${r.subjectUid}` || busyKey === `dec-${r.subjectUid}`;
           return (
             <li key={`${r.subjectUid}-${r.authorUid}`} className="incoming-ref-item">
               <div className="incoming-ref-item-head">
@@ -139,15 +160,15 @@ export default function IncomingReferencesPanel() {
                   type="button"
                   className="incoming-ref-btn incoming-ref-btn--primary"
                   onClick={() => handlePublish(r.subjectUid)}
-                  disabled={busyKey !== null}
+                  disabled={rowBusy}
                 >
-                  {busyKey === `pub-${r.subjectUid}` ? "Publiserer…" : "Publiser på CV-en deres"}
+                  {busyKey === `pub-${r.subjectUid}` ? "Publiserer…" : "Publiser referansen"}
                 </button>
                 <button
                   type="button"
                   className="incoming-ref-btn incoming-ref-btn--ghost"
                   onClick={() => handleDecline(r.subjectUid)}
-                  disabled={busyKey !== null}
+                  disabled={rowBusy}
                 >
                   {busyKey === `dec-${r.subjectUid}` ? "…" : "Avslå"}
                 </button>

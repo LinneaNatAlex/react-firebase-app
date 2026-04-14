@@ -209,6 +209,7 @@ export default function ProfileReferencesSection({ subjectUid }) {
 
   return (
     <section
+      id="referanser"
       className="person-ref-section"
       aria-labelledby="person-ref-heading"
     >
@@ -285,7 +286,7 @@ export default function ProfileReferencesSection({ subjectUid }) {
                   </span>
                   <span className="person-ref-speech" aria-hidden>
                     <span className="person-ref-speech-inner">
-                      {excerpt(p.body, 64)}
+                      {excerpt(p.body, 42)}
                     </span>
                   </span>
                   <span className="person-ref-name">{m.name}</span>

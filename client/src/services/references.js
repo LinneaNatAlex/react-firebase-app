@@ -5,7 +5,6 @@
 
 import {
   collection,
-  collectionGroup,
   doc,
   deleteDoc,
   getDoc,
@@ -86,37 +85,93 @@ export function subscribeOutgoingReferenceRequests(db, subjectUid, callback) {
 
 /**
  * Innkommende: du skal skrive om noen (author = deg).
- * Krever sammensatt indeks (collectionGroup writtenReferences: authorUid + status).
+ * Dokument: users/{subjectUid}/writtenReferences/{authorUid}
+ *
+ * Vi lytter på hver venns referanse-dokument for deg (én doc per venn), ikke collectionGroup.
+ * Da unngår vi manglende sammensatt indeks og strengere regel-evaluering for group-queries.
  */
 export function subscribeIncomingReferenceRequests(db, authorUid, callback) {
   if (!authorUid) {
     callback([]);
     return () => {};
   }
-  const q = query(
-    collectionGroup(db, "writtenReferences"),
-    where("authorUid", "==", authorUid),
-    where("status", "==", "pending"),
-  );
-  return onSnapshot(
-    q,
-    (snap) => {
-      const items = snap.docs.map((d) => {
-        const subjectUid = d.ref.parent.parent?.id || "";
-        return {
-          id: d.id,
-          authorUid: d.id,
+
+  /** @type {Map<string, import('firebase/firestore').DocumentData>} */
+  const latestBySubject = new Map();
+  /** @type {Map<string, () => void>} */
+  const docUnsubs = new Map();
+
+  function emit() {
+    const items = [];
+    for (const [subjectUid, data] of latestBySubject) {
+      if (data?.status === "pending") {
+        items.push({
+          id: `${subjectUid}_${authorUid}`,
+          authorUid,
           subjectUid,
-          ...d.data(),
-        };
-      });
-      callback(items);
+          ...data,
+        });
+      }
+    }
+    callback(items);
+  }
+
+  function attachDocListener(subjectUid) {
+    if (docUnsubs.has(subjectUid)) return;
+    const ref = doc(db, "users", subjectUid, "writtenReferences", authorUid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
+          latestBySubject.delete(subjectUid);
+        } else {
+          latestBySubject.set(subjectUid, snap.data());
+        }
+        emit();
+      },
+      (err) => {
+        console.warn("subscribeIncomingReferenceRequests doc", subjectUid, err);
+        latestBySubject.delete(subjectUid);
+        emit();
+      },
+    );
+    docUnsubs.set(subjectUid, unsub);
+  }
+
+  function detachDocListener(subjectUid) {
+    const u = docUnsubs.get(subjectUid);
+    if (u) u();
+    docUnsubs.delete(subjectUid);
+    latestBySubject.delete(subjectUid);
+  }
+
+  const friendsCol = collection(db, "users", authorUid, "friends");
+  const friendsUnsub = onSnapshot(
+    friendsCol,
+    (friendsSnap) => {
+      const currentFriends = new Set(friendsSnap.docs.map((d) => d.id));
+      for (const sid of docUnsubs.keys()) {
+        if (!currentFriends.has(sid)) detachDocListener(sid);
+      }
+      for (const sid of currentFriends) {
+        attachDocListener(sid);
+      }
     },
     (err) => {
-      console.warn("subscribeIncomingReferenceRequests", err);
+      console.warn("subscribeIncomingReferenceRequests friends", err);
+      for (const u of docUnsubs.values()) u();
+      docUnsubs.clear();
+      latestBySubject.clear();
       callback([]);
     },
   );
+
+  return () => {
+    friendsUnsub();
+    for (const u of docUnsubs.values()) u();
+    docUnsubs.clear();
+    latestBySubject.clear();
+  };
 }
 
 export async function sendReferenceRequest(db, subjectUid, authorUid) {

@@ -31,6 +31,101 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(a)/friends/$(b));
     }
 
+    function chatConvIdFromParts(p) {
+      return p[0] + '_' + p[1];
+    }
+
+    function participantsSortedTwo(p) {
+      return p is list && p.size() == 2 && p[0] is string && p[1] is string && p[0] < p[1];
+    }
+
+    function userTypeOf(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        ? get(/databases/$(database)/documents/users/$(uid)).data.get('userType', '')
+        : '';
+    }
+
+    function canChatParticipants(a, b) {
+      let ta = userTypeOf(a);
+      let tb = userTypeOf(b);
+      return (ta == 'jobseeker' && tb == 'jobseeker' && areFriendsPair(a, b)) ||
+        (ta == 'company' && tb == 'jobseeker') ||
+        (ta == 'jobseeker' && tb == 'company');
+    }
+
+    function notBlockedPair(a, b) {
+      return !exists(/databases/$(database)/documents/users/$(a)/blockedUsers/$(b)) &&
+        !exists(/databases/$(database)/documents/users/$(b)/blockedUsers/$(a));
+    }
+
+    function conversationParticipants(convId) {
+      return get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
+    }
+
+    // Eier ser hvem de har blokkert; «blockedUid» kan lese doc der de er blokkert (for isEitherBlocked / chat).
+    match /users/{userId}/blockedUsers/{blockedUid} {
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        request.auth.uid == blockedUid
+      );
+      allow create: if request.auth != null && request.auth.uid == userId && blockedUid != userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Innboks per bruker (speiler conversations/{convId}) – liste uten array-contains på hele collection.
+    match /users/{userId}/conversationRefs/{convId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null &&
+        conversationParticipants(convId) is list &&
+        request.auth.uid in conversationParticipants(convId) &&
+        userId in conversationParticipants(convId) &&
+        request.resource.data.participants == conversationParticipants(convId);
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Les samtale-metadata for deltakere (også ved blokkering).
+    // Read krever ikke sortert participants[] — hvis regelen krevde participantsSortedTwo,
+    // kunne én gammel rad (feil rekkefølge) få hele array-contains-listespørringen til å feile.
+    // Opprett/oppdater validerer fortsatt sortert par + canChatParticipants.
+    // Meldinger under /messages har fortsatt notBlockedPair.
+    match /conversations/{convId} {
+      // Les: standard mønster for array-contains-spørring (må speile query-filteret).
+      allow read: if request.auth != null &&
+        resource.data.participants is list &&
+        request.auth.uid in resource.data.participants;
+
+      allow create: if request.auth != null &&
+        participantsSortedTwo(request.resource.data.participants) &&
+        convId == chatConvIdFromParts(request.resource.data.participants) &&
+        request.auth.uid in request.resource.data.participants &&
+        canChatParticipants(request.resource.data.participants[0], request.resource.data.participants[1]) &&
+        notBlockedPair(request.resource.data.participants[0], request.resource.data.participants[1]);
+
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.participants &&
+        participantsSortedTwo(resource.data.participants) &&
+        request.resource.data.participants == resource.data.participants &&
+        canChatParticipants(resource.data.participants[0], resource.data.participants[1]) &&
+        notBlockedPair(resource.data.participants[0], resource.data.participants[1]);
+
+      match /messages/{msgId} {
+        allow read: if request.auth != null &&
+          request.auth.uid in conversationParticipants(convId) &&
+          participantsSortedTwo(conversationParticipants(convId)) &&
+          notBlockedPair(conversationParticipants(convId)[0], conversationParticipants(convId)[1]);
+
+        allow create: if request.auth != null &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.auth.uid in conversationParticipants(convId) &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 4000 &&
+          participantsSortedTwo(conversationParticipants(convId)) &&
+          notBlockedPair(conversationParticipants(convId)[0], conversationParticipants(convId)[1]) &&
+          canChatParticipants(conversationParticipants(convId)[0], conversationParticipants(convId)[1]);
+      }
+    }
+
     match /users/{subjectUid}/writtenReferences/{authorUid} {
       allow read: if resource.data.status == 'published' ||
         (request.auth != null && (
@@ -113,6 +208,18 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if true;
       allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+
+      // Offentlige CV-PDF-er uten Firebase Storage (base64 per dokument, maks ~650 KB råfil)
+      match /publicPdfs/{pdfId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.keys().hasAll(['title', 'fileName', 'dataBase64', 'uploadedAt', 'sizeBytes'])
+          && request.resource.data.dataBase64.size() < 900000
+          && request.resource.data.sizeBytes is int
+          && request.resource.data.sizeBytes <= 700000;
+        allow update: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     match /jobs/{jobId} {

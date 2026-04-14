@@ -1,4 +1,7 @@
-/* Skriftlige referanser på CV – runde avatarer + snakkeboble */
+/*
+ * Skriftlige referanser (offentlig CV / profil).
+ * Komponenter: ProfileReferencesSection.jsx, IncomingReferencesPanel.jsx (dashboard).
+ */
 
 .person-ref-section {
   margin: 1.75rem 0 0;
@@ -98,7 +101,7 @@
 .person-ref-cell {
   margin: 0;
   padding: 0;
-  width: 5.5rem;
+  width: 4.85rem;
   flex-shrink: 0;
 }
 
@@ -120,11 +123,11 @@
 }
 
 .person-ref-avatar-ring {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 3.5rem;
+  height: 3.5rem;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid var(--color-border);
+  border: 2px solid var(--color-border);
   flex-shrink: 0;
   transition: box-shadow 0.15s ease;
 }
@@ -145,15 +148,19 @@
   background: var(--color-tint);
   color: var(--color-primary);
   font-weight: 700;
-  font-size: 1.35rem;
+  font-size: 1.1rem;
 }
 
+/* Kvadratisk «2×2»-boble: fast bredde/høyde, ikke høy og smal */
 .person-ref-speech {
   position: relative;
-  margin-top: 0.35rem;
-  margin-bottom: 0.25rem;
-  width: 100%;
-  max-width: 5.75rem;
+  margin-top: 0.3rem;
+  margin-bottom: 0.2rem;
+  width: 3.85rem;
+  height: 3.85rem;
+  margin-left: auto;
+  margin-right: auto;
+  flex-shrink: 0;
 }
 
 .person-ref-speech::before {
@@ -164,31 +171,37 @@
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 6px solid var(--color-surface);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--color-surface);
   z-index: 1;
 }
 
 .person-ref-speech-inner {
-  display: block;
-  font-size: 0.68rem;
-  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  font-size: 0.58rem;
+  line-height: 1.2;
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  padding: 0.28rem 0.32rem;
   box-shadow: var(--shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
-  min-height: 2.4rem;
   text-align: left;
+  word-break: break-word;
 }
 
 .person-ref-name {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 600;
   color: var(--color-muted);
-  max-width: 5.75rem;
+  max-width: 4.85rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -215,6 +228,13 @@
   max-height: min(90vh, 32rem);
   overflow: auto;
   padding: 1.25rem 1.35rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.person-ref-modal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .person-ref-modal--wide {
@@ -421,6 +441,13 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow);
+  position: relative;
+  z-index: 0;
+}
+
+.incoming-ref-panel--empty {
+  background: var(--color-bg);
+  box-shadow: none;
 }
 
 .incoming-ref-panel h2 {
@@ -483,6 +510,14 @@
   border-radius: var(--radius-md);
   margin-bottom: 0.65rem;
   resize: vertical;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.incoming-ref-textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .incoming-ref-actions {

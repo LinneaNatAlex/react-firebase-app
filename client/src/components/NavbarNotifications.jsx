@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +20,9 @@ function notificationHref(n) {
   if (n.type === "reference_request") {
     return "/dashboard/user#incoming-references";
   }
+  if (n.type === "chat_message" && n.conversationId) {
+    return `/meldinger/${n.conversationId}`;
+  }
   if (n.type === "company_follow_company") {
     return `/bedrift/${n.actorId}`;
   }
@@ -27,6 +30,55 @@ function notificationHref(n) {
 }
 
 const PREVIEW_LIMIT = 15;
+
+function createdAtMs(n) {
+  const c = n?.createdAt;
+  if (!c) return 0;
+  return c.toMillis?.() ?? (c.seconds != null ? c.seconds * 1000 : 0);
+}
+
+/**
+ * Slår sammen flere chat_message med samme conversationId til én rad (tekst + antall).
+ */
+function buildNotificationDisplayRows(items) {
+  const chatByConv = new Map();
+  const rest = [];
+  for (const n of items) {
+    if (n.type === "chat_message" && n.conversationId) {
+      const arr = chatByConv.get(n.conversationId) || [];
+      arr.push(n);
+      chatByConv.set(n.conversationId, arr);
+    } else {
+      rest.push(n);
+    }
+  }
+  const rows = [];
+  for (const n of rest) {
+    rows.push({ kind: "single", n });
+  }
+  for (const [, notifs] of chatByConv) {
+    notifs.sort((a, b) => createdAtMs(b) - createdAtMs(a));
+    const first = notifs[0];
+    rows.push({
+      kind: "chat_group",
+      id: `chat_group_${first.conversationId}`,
+      conversationId: first.conversationId,
+      actorId: first.actorId,
+      actorLabel: first.actorLabel,
+      notifications: notifs,
+      messageCount: notifs.length,
+      unreadCount: notifs.filter((x) => !x.read).length,
+      read: notifs.every((x) => x.read),
+      createdAt: Math.max(...notifs.map(createdAtMs)),
+    });
+  }
+  rows.sort((a, b) => {
+    const ta = a.kind === "single" ? createdAtMs(a.n) : a.createdAt;
+    const tb = b.kind === "single" ? createdAtMs(b.n) : b.createdAt;
+    return tb - ta;
+  });
+  return rows;
+}
 
 function notificationText(n) {
   const name = n.actorLabel || "Noen";
@@ -45,6 +97,8 @@ function notificationText(n) {
       const job = n.jobTitle ? ` · ${n.jobTitle}` : "";
       return `${n.previewText || "Søknad oppdatert"}${job} (${name})`;
     }
+    case "chat_message":
+      return `Du har fått chatmelding fra ${name}.`;
     default:
       return "Ny aktivitet.";
   }
@@ -87,6 +141,8 @@ export default function NavbarNotifications() {
     return unsub;
   }, [currentUser?.uid]);
 
+  const displayRows = useMemo(() => buildNotificationDisplayRows(items), [items]);
+
   useEffect(() => {
     let cancelled = false;
     async function loadAvatars() {
@@ -128,6 +184,18 @@ export default function NavbarNotifications() {
     setOpen(false);
   }
 
+  async function handleOpenChatGroup(notifs) {
+    if (!currentUser?.uid || !notifs?.length) return;
+    try {
+      await Promise.all(
+        notifs.map((x) => markNotificationRead(db, currentUser.uid, x.id)),
+      );
+    } catch (e) {
+      console.warn(e);
+    }
+    setOpen(false);
+  }
+
   async function handleMarkAll() {
     if (!currentUser?.uid || items.length === 0) return;
     try {
@@ -158,8 +226,8 @@ export default function NavbarNotifications() {
 
   if (!currentUser) return null;
 
-  const showList = expanded ? items : items.slice(0, PREVIEW_LIMIT);
-  const olderCount = Math.max(0, items.length - PREVIEW_LIMIT);
+  const showList = expanded ? displayRows : displayRows.slice(0, PREVIEW_LIMIT);
+  const olderCount = Math.max(0, displayRows.length - PREVIEW_LIMIT);
 
   return (
     <div className="navbar-notifications" ref={wrapRef}>
@@ -216,7 +284,47 @@ export default function NavbarNotifications() {
               <ul
                 className={`navbar-notifications-list${expanded ? " navbar-notifications-list--scrollable" : ""}`}
               >
-                {showList.map((n) => {
+                {showList.map((row) => {
+                  if (row.kind === "chat_group") {
+                    const photo = avatarByActor[row.actorId];
+                    const initial = (row.actorLabel || "?").charAt(0).toUpperCase();
+                    const name = row.actorLabel || "Noen";
+                    const unread = row.unreadCount > 0;
+                    return (
+                      <li key={row.id}>
+                        <Link
+                          to={`/meldinger/${row.conversationId}`}
+                          className={`navbar-notifications-item${unread ? " is-unread" : ""}`}
+                          onClick={() => {
+                            void handleOpenChatGroup(row.notifications);
+                          }}
+                        >
+                          <span className="navbar-notifications-avatar-wrap">
+                            {photo ? (
+                              <img src={photo} alt="" className="navbar-notifications-avatar" />
+                            ) : (
+                              <span className="navbar-notifications-avatar-fallback" aria-hidden>
+                                {initial}
+                              </span>
+                            )}
+                          </span>
+                          <span className="navbar-notifications-text">
+                            Du har fått chatmelding fra {name}
+                          </span>
+                          <span
+                            className="navbar-notifications-msg-count"
+                            aria-label={`${row.messageCount} meldinger`}
+                          >
+                            {row.messageCount}
+                          </span>
+                          <span className="navbar-notifications-chevron" aria-hidden>
+                            →
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  }
+                  const n = row.n;
                   const photo = avatarByActor[n.actorId];
                   const initial = (n.actorLabel || "?").charAt(0).toUpperCase();
                   return (
@@ -224,7 +332,20 @@ export default function NavbarNotifications() {
                       <Link
                         to={notificationHref(n)}
                         className={`navbar-notifications-item${n.read ? "" : " is-unread"}`}
-                        onClick={() => handleOpenItem(n.id)}
+                        onClick={() => {
+                          void handleOpenItem(n.id);
+                          if (n.type === "reference_request") {
+                            window.setTimeout(() => {
+                              if (window.location.pathname !== "/dashboard/user") return;
+                              if (window.location.hash !== "#incoming-references") {
+                                window.location.hash = "incoming-references";
+                              }
+                              document
+                                .getElementById("incoming-references")
+                                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }, 400);
+                          }
+                        }}
                       >
                         <span className="navbar-notifications-avatar-wrap">
                           {photo ? (

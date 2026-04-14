@@ -1,0 +1,256 @@
+/* Hardkodede lyse flater → følger mørke variabler */
+html[data-theme="dark"] .dashboard-content {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="dark"] .dashboard-header h1,
+html[data-theme="dark"] .section-title {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .dashboard-header p,
+html[data-theme="dark"] .stat-label {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .stat-number {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .application-card,
+html[data-theme="dark"] .job-card,
+html[data-theme="dark"] .tips-section,
+html[data-theme="dark"] .tips-section h2,
+html[data-theme="dark"] .tip-card,
+html[data-theme="dark"] .notification-settings-card,
+html[data-theme="dark"] .interview-alert,
+html[data-theme="dark"] .company-message-box,
+html[data-theme="dark"] .empty-state {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .tip-card h4 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .tip-card p {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .form-section-title {
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .form-section-title.form-section-title--accent {
+  color: var(--color-primary);
+}
+
+html[data-theme="dark"] .cv-section p {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .cv-section h2 {
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .cv-empty {
+  color: var(--color-muted);
+}
+
+/* Bedrift: stillingskort – h3 hadde #111827 og ble nesten usynlig på mørk flate */
+html[data-theme="dark"] .job-card-header h3 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .job-card-meta,
+html[data-theme="dark"] .job-card-description,
+html[data-theme="dark"] .applicant-count {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .applicant-count.has-applicants {
+  color: var(--color-primary);
+}
+
+html[data-theme="dark"] .sidebar-account-card,
+html[data-theme="dark"] .sidebar-label,
+html[data-theme="dark"] .sidebar-user-name--header {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .form-group label,
+html[data-theme="dark"] .form-hint {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .form-group input,
+html[data-theme="dark"] .form-group textarea,
+html[data-theme="dark"] .cv-form input,
+html[data-theme="dark"] .cv-form textarea {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .loading-text {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .navbar-mobile-toggle,
+html[data-theme="dark"] .sidebar-mobile-toggle {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .nav-item {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .nav-item:hover {
+  color: var(--color-primary);
+}
+
+/* Knapper (Dashboard m.fl.) */
+html[data-theme="dark"] .button.secondary {
+  background: var(--color-tint);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+html[data-theme="dark"] .button.secondary:hover {
+  background: var(--color-tint-strong);
+}
+
+html[data-theme="dark"] .button.danger {
+  background: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+}
+
+/* Jobbsøk: advarselsboks */
+html[data-theme="dark"] .profile-notice {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(217, 119, 6, 0.55);
+  color: #fde68a;
+}
+
+html[data-theme="dark"] .profile-notice a {
+  color: #fcd34d;
+}
+
+/* Jobbsøk: filvelger-tekst */
+html[data-theme="dark"] .apply-attach-pdf input[type="file"] {
+  color: var(--color-muted);
+}
+
+/* Bedrift: modaler (ny stilling, søker, melding) */
+html[data-theme="dark"] .modal {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="dark"] .modal h2 {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .job-form label,
+html[data-theme="dark"] .reuse-previous-block label {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .job-form input,
+html[data-theme="dark"] .job-form textarea,
+html[data-theme="dark"] .job-form select {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .job-form input::placeholder,
+html[data-theme="dark"] .job-form textarea::placeholder {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .template-hint {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .template-hint strong {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .ai-error {
+  color: #fca5a5;
+}
+
+html[data-theme="dark"] .applicant-detail-header {
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .applicant-detail-header p {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .detail-section p {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .cover-letter-text,
+html[data-theme="dark"] .no-cover-letter {
+  background: var(--color-bg);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+html[data-theme="dark"] .detail-actions {
+  border-top-color: var(--color-border);
+}
+
+html[data-theme="dark"] .close-modal {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .close-modal:hover {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .status-select.large {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .message-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="dark"] .message-subtitle {
+  color: var(--color-muted);
+}
+
+html[data-theme="dark"] .message-form label {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .message-form textarea {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .message-form textarea:focus {
+  background: var(--color-surface);
+  box-shadow: 0 0 0 4px rgba(143, 184, 168, 0.15);
+}

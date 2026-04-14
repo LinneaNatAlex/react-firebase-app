@@ -27,6 +27,7 @@ function Navbar() {
       { to: MAGAZINE_PATH, label: MAGAZINE_NAME },
     ];
     if (currentUser) {
+      items.push({ to: "/meldinger", label: "Meldinger" });
       items.push({ to: "/priser", label: "Priser" });
     }
 

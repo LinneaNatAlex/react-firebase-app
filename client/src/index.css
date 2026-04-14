@@ -62,3 +62,18 @@ button {
 html {
   scroll-behavior: smooth;
 }
+
+/* Mørk modus – variabler (aktiveres med html[data-theme="dark"] fra theme.js) */
+html[data-theme="dark"] {
+  --color-bg: #141218;
+  --color-surface: #1e1c24;
+  --color-text: #f5f2ed;
+  --color-muted: #a8a29e;
+  --color-border: #3f3d46;
+  --color-primary: #8fb8a8;
+  --color-primary-hover: #a6c9bc;
+  --color-tint: #2a2832;
+  --color-tint-strong: #3d3a47;
+  --color-link-bright: #9dcec0;
+  --shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}

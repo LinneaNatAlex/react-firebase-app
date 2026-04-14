@@ -1,7 +1,7 @@
 /**
  * Varsler: users/{uid}/notifications/{id}
  * Typer: company_follow | company_follow_company | friend_request | friend_accepted |
- * reference_request | application_update
+ * reference_request | application_update | chat_message
  */
 
 import {
@@ -53,6 +53,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS = {
   socialFollows: true,
   applicationStatusChanges: true,
   applicationCompanyMessages: true,
+  chatMessages: true,
 };
 
 /**
@@ -221,6 +222,27 @@ export async function notifyReferenceRequest(db, refereeUid, subjectUid) {
     createdAt: serverTimestamp(),
     actorId: subjectUid,
     actorLabel,
+  });
+}
+
+/** Ny chat-melding – mottaker får varsel (ingen meldingstekst; visning grupperes per samtale i UI). */
+export async function notifyChatMessage(db, recipientUid, senderUid, conversationId) {
+  if (!recipientUid || !senderUid || recipientUid === senderUid) return;
+  const s = await getMergedNotificationSettings(db, recipientUid);
+  if (!s.notificationsEnabled || !s.chatMessages) return;
+  const senderSnap = await getDoc(doc(db, "users", senderUid));
+  const st = senderSnap.exists() ? senderSnap.data().userType : "";
+  const actorLabel =
+    st === "company"
+      ? await actorLabelForCompany(db, senderUid)
+      : await actorLabelForUser(db, senderUid);
+  await addDoc(collection(db, "users", recipientUid, "notifications"), {
+    type: "chat_message",
+    read: false,
+    createdAt: serverTimestamp(),
+    actorId: senderUid,
+    actorLabel,
+    conversationId: conversationId || "",
   });
 }
 

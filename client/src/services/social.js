@@ -461,6 +461,19 @@ export async function fetchCompanyLogoUrl(db, companyId) {
   }
 }
 
+/** Profilbilde eller bedriftslogo for chat (etter userType). */
+export async function fetchParticipantAvatarUrl(db, uid) {
+  if (!uid) return null;
+  try {
+    const u = await getDoc(doc(db, "users", uid));
+    const ut = u.exists() ? u.data()?.userType : "";
+    if (ut === "company") return fetchCompanyLogoUrl(db, uid);
+    return fetchProfilePhotoUrl(db, uid);
+  } catch {
+    return null;
+  }
+}
+
 /** @returns {Promise<Array<{ id: string, companyName: string }>>} */
 export async function fetchCompanyNamesForIds(db, ids) {
   const out = [];

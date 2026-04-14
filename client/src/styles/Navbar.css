@@ -560,6 +560,19 @@
   min-width: 0;
 }
 
+.navbar-notifications-msg-count {
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--color-primary);
+  color: #fff;
+  line-height: 1.2;
+}
+
 .navbar-notifications-chevron {
   flex-shrink: 0;
   color: var(--color-muted);

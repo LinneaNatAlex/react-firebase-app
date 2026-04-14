@@ -2,7 +2,8 @@
 
 .jobs-page {
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 /* ===== HEADER MED SØK ===== */
@@ -37,10 +38,11 @@
 
 .search-box {
   display: flex;
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-border);
 }
 
 .search-input {
@@ -49,15 +51,19 @@
   border: none;
   font-size: 1rem;
   outline: none;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .location-input {
   flex: 1;
   padding: 1rem 1.25rem;
   border: none;
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--color-border);
   font-size: 1rem;
   outline: none;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .search-button {
@@ -87,7 +93,7 @@
 
 .jobs-results-header h2 {
   font-size: 1.25rem;
-  color: #374151;
+  color: var(--color-text);
 }
 
 /* ===== STILLINGSRUTENETT ===== */
@@ -99,10 +105,11 @@
 
 /* ===== STILLINGSKORT ===== */
 .job-listing-card {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
   transition: box-shadow 0.2s, transform 0.2s;
 }
 
@@ -139,12 +146,12 @@
 
 .job-listing-title h3 {
   font-size: 1.1rem;
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 0.25rem;
 }
 
 .company-name {
-  color: #6b7280;
+  color: var(--color-muted);
   font-size: 0.9rem;
 }
 
@@ -163,7 +170,7 @@ a.company-name-link:hover {
 .job-listing-meta {
   display: flex;
   gap: 1rem;
-  color: #6b7280;
+  color: var(--color-muted);
   font-size: 0.9rem;
   margin-bottom: 0.75rem;
 }
@@ -175,7 +182,7 @@ a.company-name-link:hover {
 }
 
 .job-listing-description {
-  color: #6b7280;
+  color: var(--color-muted);
   font-size: 0.95rem;
   line-height: 1.5;
   margin-bottom: 1rem;
@@ -186,11 +193,11 @@ a.company-name-link:hover {
   justify-content: space-between;
   align-items: center;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .job-date {
-  color: #9ca3af;
+  color: var(--color-muted);
   font-size: 0.85rem;
 }
 
@@ -206,15 +213,16 @@ a.company-name-link:hover {
 }
 
 .view-job-button:hover {
-  background: #d1fae5;
+  background: var(--color-tint-strong);
 }
 
 /* ===== INGEN RESULTATER ===== */
 .no-results {
   text-align: center;
   padding: 4rem 2rem;
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
+  border: 1px solid var(--color-border);
 }
 
 .no-results-icon {
@@ -228,17 +236,17 @@ a.company-name-link:hover {
 }
 
 .no-results h3 {
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 0.5rem;
 }
 
 .no-results p {
-  color: #6b7280;
+  color: var(--color-muted);
 }
 
 .loading-text {
   text-align: center;
-  color: #6b7280;
+  color: var(--color-muted);
   padding: 3rem;
 }
 
@@ -258,7 +266,8 @@ a.company-name-link:hover {
 }
 
 .job-modal {
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   border-radius: 16px;
   padding: 2rem;
   width: 100%;
@@ -266,14 +275,24 @@ a.company-name-link:hover {
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.job-modal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .close-modal {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: #f3f4f6;
-  border: none;
+  background: var(--color-tint);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -283,7 +302,7 @@ a.company-name-link:hover {
 }
 
 .close-modal:hover {
-  background: #e5e7eb;
+  background: var(--color-tint-strong);
 }
 
 .job-modal-header {
@@ -295,7 +314,7 @@ a.company-name-link:hover {
 
 .job-modal-header h2 {
   font-size: 1.5rem;
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 0.25rem;
 }
 
@@ -303,10 +322,10 @@ a.company-name-link:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  color: #6b7280;
+  color: var(--color-muted);
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .job-modal-description {
@@ -315,12 +334,12 @@ a.company-name-link:hover {
 
 .job-modal-description h3 {
   font-size: 1.1rem;
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 0.75rem;
 }
 
 .job-modal-description p {
-  color: #374151;
+  color: var(--color-muted);
   line-height: 1.7;
   white-space: pre-wrap;
 }
@@ -347,7 +366,7 @@ a.company-name-link:hover {
 }
 
 .info-text {
-  color: #6b7280;
+  color: var(--color-muted);
 }
 
 .info-text a {
@@ -375,7 +394,7 @@ a.company-name-link:hover {
 
 .profile-preview p {
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--color-muted);
 }
 
 .profile-notice {
@@ -395,6 +414,17 @@ a.company-name-link:hover {
 
 .apply-form .form-group {
   margin: 1rem 0;
+}
+
+.apply-form .form-group > label {
+  display: block;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.35rem;
+}
+
+.apply-modal > h2 {
+  color: var(--color-text);
 }
 
 .cover-letter-header {
@@ -423,7 +453,7 @@ a.company-name-link:hover {
   align-items: center;
   gap: 0.55rem;
   font-size: 0.92rem;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .apply-attach-pdf {
@@ -481,12 +511,21 @@ a.company-name-link:hover {
 .apply-form textarea {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
   font-size: 1rem;
   font-family: inherit;
   resize: vertical;
   min-height: 150px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.apply-form textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .apply-form textarea:focus {
@@ -496,16 +535,16 @@ a.company-name-link:hover {
 
 .apply-form .form-hint {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--color-muted);
   margin-top: 0.5rem;
 }
 
 .cover-letter-library {
   margin: 0.65rem 0 0.75rem;
   padding: 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #f9fafb;
+  background: var(--color-tint);
 }
 
 .cover-letter-library-row {
@@ -524,9 +563,10 @@ a.company-name-link:hover {
   flex: 1;
   min-width: 12rem;
   padding: 0.55rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
@@ -534,15 +574,16 @@ a.company-name-link:hover {
   flex: 1;
   min-width: 12rem;
   padding: 0.55rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
 .ai-credit-inline {
   font-size: 0.7rem;
-  color: #9ca3af;
+  color: var(--color-muted);
   font-style: italic;
   margin-left: 0.5rem;
 }
@@ -552,6 +593,30 @@ a.company-name-link:hover {
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1.5rem;
+}
+
+/* Sekundærknapp i søknadsmodal (JobsPage importerer ikke Dashboard.css) */
+.apply-actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.apply-actions .button.secondary {
+  background: var(--color-tint);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.apply-actions .button.secondary:hover {
+  background: var(--color-tint-strong);
 }
 
 /* ===== RESPONSIVT ===== */
@@ -566,7 +631,7 @@ a.company-name-link:hover {
 
   .location-input {
     border-left: none;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--color-border);
   }
 
   .job-listing-meta {

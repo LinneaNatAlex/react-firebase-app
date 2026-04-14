@@ -29,6 +29,12 @@ import {
   touchCompanyJobLibraryLastUsed,
 } from "../services/companyJobLibrary";
 import { notifyJobseekerApplicationUpdate } from "../services/notifications";
+// Profilutdrag + søknadstekst i søker-modal (samme logikk som PersonPublicCvPage)
+import {
+  normalizeCvHyphens,
+  splitCvMultilineParagraphs,
+  splitProfileIntroParagraphs,
+} from "../utils/splitProfileIntroParagraphs";
 import "../styles/Dashboard.css";
 
 function firestoreTsMs(t) {
@@ -571,15 +577,18 @@ function CompanyDashboard() {
             Stillingsbibliotek ({jobLibraryItems.length})
           </button>
           <button
-            className={activeTab === "notifications" ? "active" : ""}
+            className={activeTab === "settings" ? "active" : ""}
             onClick={() => {
-              setActiveTab("notifications");
+              setActiveTab("settings");
               setSelectedJob(null);
               setMobileNavOpen(false);
             }}
           >
-            Varslingsinnstillinger
+            Instillinger
           </button>
+          <Link className="nav-item" to="/meldinger" onClick={() => setMobileNavOpen(false)}>
+            Meldinger
+          </Link>
           <p className="sidebar-label sidebar-label--spaced">Profil</p>
           <Link className="nav-item" to="/dashboard/company/profil">
             Bedriftsprofil
@@ -593,7 +602,7 @@ function CompanyDashboard() {
       </aside>
 
       <main className="dashboard-main">
-        {activeTab === "notifications" && <NotificationSettingsPanel />}
+        {activeTab === "settings" && <NotificationSettingsPanel />}
 
         {activeTab === "library" && currentUser?.uid && (
           <CompanyJobLibraryPanel
@@ -1153,43 +1162,64 @@ function CompanyDashboard() {
                 </div>
               )}
 
-              {/* Profil/CV kommer først */}
+              {/* Profil før søknad: samme split-funksjoner som offentlig CV (.cv-prose i Dashboard.css) */}
               {selectedApplicant.profile && (
                 <>
                   {selectedApplicant.profile.summary && (
                     <div className="detail-section">
                       <h3>Om søkeren</h3>
-                      <p>{String(selectedApplicant.profile.summary)}</p>
+                      <div className="cv-prose" lang="nb">
+                        {splitProfileIntroParagraphs(
+                          String(selectedApplicant.profile.summary),
+                        ).map((para, i) => (
+                          <p key={i}>{para}</p>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {selectedApplicant.profile.experience && (
                     <div className="detail-section">
                       <h3>Erfaring</h3>
-                      <p style={{ whiteSpace: "pre-line" }}>
-                        {String(selectedApplicant.profile.experience)}
-                      </p>
+                      <div className="cv-prose" lang="nb">
+                        {splitCvMultilineParagraphs(
+                          String(selectedApplicant.profile.experience),
+                        ).map((para, i) => (
+                          <p key={i} className="cv-prose-multiline">
+                            {para}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {selectedApplicant.profile.education && (
                     <div className="detail-section">
                       <h3>Utdanning</h3>
-                      <p style={{ whiteSpace: "pre-line" }}>
-                        {String(selectedApplicant.profile.education)}
-                      </p>
+                      <div className="cv-prose" lang="nb">
+                        {splitCvMultilineParagraphs(
+                          String(selectedApplicant.profile.education),
+                        ).map((para, i) => (
+                          <p key={i} className="cv-prose-multiline">
+                            {para}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {selectedApplicant.profile.skills && (
                     <div className="detail-section">
                       <h3>Ferdigheter</h3>
+                      {/* Komma-separert liste; normalizeCvHyphens unngår brutt ord ved linjeskift */}
                       <div className="applicant-skills">
-                        {String(selectedApplicant.profile.skills)
+                        {normalizeCvHyphens(String(selectedApplicant.profile.skills))
                           .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
                           .map((skill, i) => (
                             <span key={i} className="skill-tag">
-                              {skill.trim()}
+                              {skill}
                             </span>
                           ))}
                       </div>
@@ -1198,13 +1228,21 @@ function CompanyDashboard() {
                 </>
               )}
 
-              {/* Søknadstekst kommer etter profilen */}
+              {/* Søknadstekst: splitCvMultilineParagraphs (som på CV-siden) */}
               <div className="detail-section">
                 <h3>Søknadstekst</h3>
                 {selectedApplicant.coverLetter ? (
-                  <p className="cover-letter-text">
-                    {selectedApplicant.coverLetter}
-                  </p>
+                  <div className="cover-letter-text">
+                    <div className="cv-prose" lang="nb">
+                      {splitCvMultilineParagraphs(
+                        String(selectedApplicant.coverLetter),
+                      ).map((para, i) => (
+                        <p key={i} className="cv-prose-multiline">
+                          {para}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
                   <p className="no-cover-letter">
                     Søkeren sendte ikke med søknadstekst
@@ -1235,6 +1273,14 @@ function CompanyDashboard() {
                   </p>
                 ) : null}
               </div>
+
+              {selectedApplicant.userId ? (
+                <p className="template-hint" style={{ marginBottom: "0.75rem" }}>
+                  <Link to={`/meldinger?with=${selectedApplicant.userId}`}>
+                    Åpne direktechat med søker
+                  </Link>
+                </p>
+              ) : null}
 
               <div className="detail-actions">
                 <select

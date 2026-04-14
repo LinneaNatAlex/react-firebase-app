@@ -1,18 +1,21 @@
 // Rediger offentlig bedriftsprofil (synlig for besøkende på /bedrift/:id)
 
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/Toast";
 import { doc, updateDoc, getDoc, deleteField } from "firebase/firestore";
 import { db } from "../firebase";
 import { syncPublicCompanyProfile } from "../services/companyProfile";
+import NotificationSettingsPanel from "../components/NotificationSettingsPanel";
 import "../styles/CompanyProfilePage.css";
+import "../styles/Dashboard.css";
 
 const LOGO_MAX_BYTES = 750 * 1024;
 
 function CompanyProfileEditPage() {
   const { currentUser, userData, refreshUserData } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const logoInputRef = useRef(null);
   const [saving, setSaving] = useState(false);
@@ -25,6 +28,12 @@ function CompanyProfileEditPage() {
     industry: "",
     hqLocation: "",
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("company-profile-hide-scrollbar");
+    return () => root.classList.remove("company-profile-hide-scrollbar");
+  }, []);
 
   useEffect(() => {
     if (!userData) return;
@@ -221,6 +230,8 @@ function CompanyProfileEditPage() {
       ? `${window.location.origin}/bedrift/${currentUser?.uid || ""}`
       : "";
 
+  const settingsTab = searchParams.get("tab") === "settings";
+
   return (
     <div className="company-profile-edit-page">
       <div className="company-profile-edit-inner">
@@ -248,6 +259,28 @@ function CompanyProfileEditPage() {
           ) : null}
         </header>
 
+        <nav className="company-profile-tabs" aria-label="Profil eller innstillinger">
+          <button
+            type="button"
+            className={`company-profile-tab${!settingsTab ? " company-profile-tab--active" : ""}`}
+            onClick={() => setSearchParams({}, { replace: true })}
+          >
+            Profil
+          </button>
+          <button
+            type="button"
+            className={`company-profile-tab${settingsTab ? " company-profile-tab--active" : ""}`}
+            onClick={() => setSearchParams({ tab: "settings" }, { replace: true })}
+          >
+            Instillinger
+          </button>
+        </nav>
+
+        {settingsTab ? (
+          <NotificationSettingsPanel />
+        ) : null}
+
+        {!settingsTab ? (
         <form className="company-profile-form" onSubmit={handleSubmit}>
           <div className="company-profile-logo-block">
             <label className="company-profile-logo-label">Bedriftslogo</label>
@@ -376,6 +409,7 @@ function CompanyProfileEditPage() {
             </button>
           </div>
         </form>
+        ) : null}
       </div>
     </div>
   );

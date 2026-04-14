@@ -1,5 +1,18 @@
 /* Bedriftsprofil – redigering + offentlig visning */
 
+/* Skjul nettleser-scrollbar (rulling med musehjul/tastatur fungerer fortsatt) */
+html.company-profile-hide-scrollbar,
+html.person-public-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html.company-profile-hide-scrollbar::-webkit-scrollbar,
+html.person-public-hide-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -119,6 +132,36 @@
   font-size: 0.9rem;
 }
 
+.company-profile-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.company-profile-tab {
+  padding: 0.55rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.company-profile-tab:hover {
+  color: var(--color-text);
+}
+
+.company-profile-tab.company-profile-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
 .company-profile-back:hover {
   text-decoration: underline;
 }
@@ -224,6 +267,13 @@
   resize: vertical;
   min-height: 8rem;
   line-height: 1.5;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.company-profile-form textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .company-profile-form-row {
@@ -435,6 +485,10 @@
   color: var(--color-text);
   letter-spacing: -0.02em;
   line-height: 1.15;
+}
+
+.company-public-messages-cta {
+  margin: 0 0 0.65rem;
 }
 
 .company-public-chips {
@@ -856,7 +910,7 @@
 
 .person-public-identity-text {
   flex: 1;
-  min-width: 12rem;
+  min-width: 0;
   padding-bottom: 0.15rem;
 }
 
@@ -917,6 +971,25 @@
   margin: 0.5rem 0 0.75rem;
 }
 
+.person-public-cv-row--split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Én linje på tablet/desktop når det er plass (unngå stablet CV + melding) */
+@media (min-width: 480px) {
+  .person-public-cv-row--split {
+    flex-wrap: nowrap;
+  }
+
+  .person-public-cv-row--split .person-public-cv-cta {
+    flex: 0 1 auto;
+    white-space: nowrap;
+  }
+}
+
 .person-public-cv-cta {
   display: inline-flex;
   align-items: center;
@@ -937,6 +1010,21 @@
   background: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
   color: #fff;
+}
+
+/* Outline-variant: hvit bunn + tydelig kant (transparent så knappen så «delt» ut over banner/kropp) */
+.person-public-cv-cta--secondary {
+  background: #fff;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.person-public-cv-cta--secondary:hover {
+  background: var(--color-tint, #eef6f1);
+  border-color: var(--color-primary-hover, var(--color-primary));
+  color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .person-public-topbar--split {
@@ -975,6 +1063,7 @@
   color: var(--color-muted);
   font-size: 0.98rem;
   line-height: 1.45;
+  text-wrap: balance;
 }
 
 .person-public-stats {
@@ -996,8 +1085,21 @@
   opacity: 0.5;
 }
 
-.person-public-friend-actions {
+/* Venn-rad + sted/tlf.-chips på samme linje der det er plass */
+.person-public-inline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
   margin-bottom: 0.65rem;
+}
+
+.person-public-friend-actions {
+  margin-bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .person-public-friend-row {
@@ -1110,7 +1212,33 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0;
+}
+
+.person-public-remove-friend {
+  margin: -0.25rem 0 0.65rem;
+}
+
+.person-public-friend-remove-link {
+  border: none;
+  background: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  padding: 0;
+}
+
+.person-public-friend-remove-link:hover:not(:disabled) {
+  color: #b42318;
+}
+
+.person-public-friend-remove-link:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .person-public-chip {
@@ -1204,6 +1332,56 @@
   white-space: pre-wrap;
 }
 
+/*
+ * Offentlig profil + CV-sider (PersonPublicProfilePage, PersonPublicCvPage).
+ * Tekst kommer fra utils/splitProfileIntroParagraphs.js (prose vs multiline).
+ * lang="nb" på wrapper gir bedre norsk hyphenering i nettleseren.
+ */
+.person-public-body-text--prose {
+  white-space: normal;
+}
+
+.person-public-body-text--prose p {
+  margin: 0 0 1rem;
+  max-width: 42em;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--color-text);
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  orphans: 2;
+  widows: 2;
+}
+
+@media (min-width: 641px) {
+  .person-public-body-text--prose p {
+    text-align: justify;
+    text-justify: inter-word;
+    text-align-last: start;
+  }
+}
+
+.person-public-body-text--prose p:last-child {
+  margin-bottom: 0;
+}
+
+.person-public-body-text--prose p.person-public-body-text--multiline {
+  white-space: pre-line;
+}
+
+@media (max-width: 640px) {
+  .person-public-body-text--prose p {
+    font-size: 1rem;
+    line-height: 1.72;
+    max-width: none;
+  }
+}
+
+/* Eldre / generell: rå tekst med eksakte linjeskift (lite brukt etter prose-innføring) */
 .person-public-preline {
   white-space: pre-wrap;
 }
@@ -1272,6 +1450,70 @@
 
 .person-public-aside-card--friends {
   margin-bottom: 1rem;
+}
+
+.person-public-aside-card--docs {
+  margin-top: 1rem;
+}
+
+.person-public-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.person-public-doc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.person-public-doc-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.person-public-doc-link:hover {
+  text-decoration: underline;
+}
+
+button.person-public-doc-link--button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  padding: 0;
+}
+
+.person-public-doc-badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
+.person-public-friends-empty {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  line-height: 1.4;
 }
 
 .person-public-friends-hint {
@@ -1423,6 +1665,13 @@
 .public-profile-modal-body {
   padding: 0.75rem 1rem 1rem;
   overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.public-profile-modal-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .person-public-modal-empty {

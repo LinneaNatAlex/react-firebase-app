@@ -24,6 +24,8 @@ import MagazineEditorPage from "./pages/MagazineEditorPage";
 import PersonPublicProfilePage from "./pages/PersonPublicProfilePage";
 import PersonPublicCvPage from "./pages/PersonPublicCvPage";
 import SearchPage from "./pages/SearchPage";
+import ChatPage from "./pages/ChatPage";
+import ChatDockGate from "./components/ChatDock";
 
 import "./index.css";
 
@@ -56,6 +58,19 @@ function ProfilMeCvRoute() {
     return <Navigate to={`/bedrift/${currentUser.uid}`} replace />;
   }
   return <Navigate to={`/profil/${currentUser.uid}/cv`} replace />;
+}
+
+// Innlogget bruker (jobbsøker eller bedrift) – brukes til f.eks. meldinger
+function LoggedInRoute({ children }) {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <div className="loading-screen">Laster...</div>;
+  }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
 }
 
 // Beskytter sider som krever innlogging
@@ -167,6 +182,7 @@ function AppContent() {
   return (
     <BrowserRouter>
       <Navbar />
+      <ChatDockGate />
 
       <Routes>
         {/* Offentlige sider - omdirigerer innloggede brukere */}
@@ -197,6 +213,22 @@ function AppContent() {
         <Route path="/profil/me/cv" element={<ProfilMeCvRoute />} />
         <Route path="/profil/:userId/cv" element={<PersonPublicCvPage />} />
         <Route path="/profil/:userId" element={<PersonPublicProfilePage />} />
+        <Route
+          path="/meldinger"
+          element={
+            <LoggedInRoute>
+              <ChatPage />
+            </LoggedInRoute>
+          }
+        />
+        <Route
+          path="/meldinger/:conversationId"
+          element={
+            <LoggedInRoute>
+              <ChatPage />
+            </LoggedInRoute>
+          }
+        />
         <Route path="/priser" element={<PricingPage />} />
         <Route
           path="/utblikk/redaksjon"
