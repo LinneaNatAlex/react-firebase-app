@@ -11,7 +11,8 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { signOut } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
+import { PLATFORM_ADMIN_EMAIL } from "../config/adminEmail";
 import "../styles/Dashboard.css";
 
 function AdminDashboard() {
@@ -20,37 +21,62 @@ function AdminDashboard() {
   const [applications, setApplications] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Sjekk admin-tilgang
+  // Vent på Firebase Auth + hent Firestore (hver samling for seg – ett avvik blokkerer ikke resten)
   useEffect(() => {
-    const isAdmin = localStorage.getItem("isAdmin");
-    if (!isAdmin) {
-      navigate("/admin");
-    }
-  }, [navigate]);
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      const isAdmin = localStorage.getItem("isAdmin");
+      if (!isAdmin) {
+        navigate("/admin");
+        setLoading(false);
+        return;
+      }
+      if (!user || user.email !== PLATFORM_ADMIN_EMAIL) {
+        localStorage.removeItem("isAdmin");
+        navigate("/admin");
+        setLoading(false);
+        return;
+      }
 
-  // Hent all data
-  useEffect(() => {
-    async function fetchData() {
+      setFetchError("");
+      const errs = [];
+
       try {
         const usersSnap = await getDocs(collection(db, "users"));
-        const jobsSnap = await getDocs(collection(db, "jobs"));
-        const appsSnap = await getDocs(collection(db, "applications"));
+        setUsers(usersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Admin: users", e);
+        errs.push("brukere");
+      }
 
-        setUsers(usersSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-        setJobs(jobsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-        setApplications(
-          appsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      try {
+        const jobsSnap = await getDocs(collection(db, "jobs"));
+        setJobs(jobsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Admin: jobs", e);
+        errs.push("stillinger");
+      }
+
+      try {
+        const appsSnap = await getDocs(collection(db, "applications"));
+        setApplications(appsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Admin: applications", e);
+        errs.push("søknader");
+      }
+
+      if (errs.length > 0) {
+        setFetchError(
+          `Kunne ikke laste: ${errs.join(", ")}. Sjekk Firestore-regler og at du er innlogget med admin-Google-konto. Deploy regler med: firebase deploy --only firestore:rules`,
         );
-      } catch (error) {
-        console.error("Feil ved henting av data:", error);
       }
       setLoading(false);
-    }
-    fetchData();
-  }, []);
+    });
+    return () => unsub();
+  }, [navigate]);
 
   async function handleLogout() {
     localStorage.removeItem("isAdmin");
@@ -210,6 +236,15 @@ function AdminDashboard() {
       </aside>
 
       <main className="dashboard-main">
+        {fetchError && (
+          <div
+            className="auth-error"
+            style={{ margin: "1rem 1.5rem 0", maxWidth: "56rem" }}
+            role="alert"
+          >
+            {fetchError}
+          </div>
+        )}
         {activeTab === "overview" && (
           <div className="dashboard-content">
             <h1>Admin Oversikt</h1>

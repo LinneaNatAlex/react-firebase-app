@@ -16,6 +16,8 @@
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  z-index: 4;
+  isolation: isolate;
   /* Skjul scrollbar (behold scrolling) */
   -ms-overflow-style: none; /* IE/Edge (legacy) */
   scrollbar-width: none; /* Firefox */
@@ -372,11 +374,6 @@
   color: #111827;
   word-break: break-word;
   margin: 0;
-}
-
-.form-section-title--accent {
-  color: var(--color-primary, #2c4a42);
-  font-weight: 700;
 }
 
 .empty-state-graphic {
@@ -926,6 +923,45 @@
   line-height: 1.6;
 }
 
+/*
+ * Bedrift → søker-modal: profilutdrag og søknadstekst.
+ * Speiler typografi fra CompanyProfilePage.css (.person-public-body-text--prose).
+ * JSX: CompanyDashboard.jsx + splitProfileIntroParagraphs / splitCvMultilineParagraphs.
+ */
+.detail-section .cv-prose {
+  margin: 0;
+}
+
+.detail-section .cv-prose p {
+  margin: 0 0 0.65rem;
+  color: #374151;
+  line-height: 1.7;
+  font-size: 0.95rem;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  orphans: 2;
+  widows: 2;
+}
+
+.detail-section .cv-prose p:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 641px) {
+  .detail-section .cv-prose p {
+    text-align: justify;
+    text-justify: inter-word;
+    text-align-last: start;
+  }
+}
+
+.detail-section .cv-prose p.cv-prose-multiline {
+  white-space: pre-line;
+}
+
 .ai-evaluation {
   background: var(--color-tint);
   padding: 1rem;
@@ -937,7 +973,15 @@
   background: #f9fafb;
   padding: 1rem;
   border-radius: 8px;
-  white-space: pre-line;
+}
+
+/* Innhold: splitCvMultilineParagraphs (tom linje = avsnitt) */
+.cover-letter-text .cv-prose p {
+  margin-bottom: 0.65rem;
+}
+
+.cover-letter-text .cv-prose p:last-child {
+  margin-bottom: 0;
 }
 
 .no-cover-letter {
@@ -946,6 +990,50 @@
   background: #f9fafb;
   padding: 1rem;
   border-radius: 8px;
+}
+
+.blocked-users-hint,
+.blocked-users-empty {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0 0 0.75rem;
+  line-height: 1.45;
+}
+
+.blocked-users-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.blocked-users-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.blocked-users-item:last-child {
+  border-bottom: none;
+}
+
+.blocked-users-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.blocked-users-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.blocked-users-profile-link {
+  font-size: 0.85rem;
+  color: var(--color-primary);
 }
 
 .detail-actions {
@@ -1142,6 +1230,13 @@ a.application-company-link:hover {
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.modal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .modal h2 {
@@ -1188,6 +1283,13 @@ a.application-company-link:hover {
 .job-form textarea {
   resize: vertical;
   min-height: 100px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.job-form textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .form-row {
@@ -1222,6 +1324,8 @@ a.application-company-link:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .template-generate-btn {
@@ -2114,6 +2218,12 @@ a.application-company-link:hover {
   margin-top: 0;
 }
 
+/* Må komme etter .form-section-title så accent ikke overskrives av #1f2937 */
+.form-section-title.form-section-title--accent {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
 .cv-section {
   margin-bottom: 2rem;
 }
@@ -2872,4 +2982,110 @@ a.application-company-link:hover {
 .account-deletion-button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+/* Offentlige PDF-vedlegg (CV-fanen) */
+.cv-public-pdf-attachments {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.cv-public-pdf-lead {
+  margin: 0 0 1rem;
+  max-width: 40rem;
+}
+
+.cv-public-pdf-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cv-public-pdf-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--color-bg, #fafafa);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+}
+
+.cv-public-pdf-row-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+.cv-public-pdf-label input {
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  font-size: 0.9rem;
+}
+
+.cv-public-pdf-filename {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--color-muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-public-pdf-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cv-public-pdf-open {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary, #2c4a42);
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.cv-public-pdf-open:hover {
+  text-decoration: underline;
+}
+
+.cv-public-pdf-remove {
+  border: none;
+  background: transparent;
+  color: #b42318;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cv-public-pdf-remove:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.cv-public-pdf-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.cv-public-pdf-limit {
+  font-size: 0.8rem;
+  color: var(--color-muted, #6b7280);
 }

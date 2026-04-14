@@ -207,7 +207,12 @@ function JobsPage() {
           applicationData.cvPdfName = cvPdf.name;
         } catch (e) {
           console.error('CV PDF upload:', e);
-          toast.error('Kunne ikke laste opp PDF. Prøv igjen.');
+          const code = e?.code || '';
+          if (code === 'storage/unauthorized') {
+            toast.error('Ingen tilgang til å laste opp PDF. Aktiver Firebase Storage og deploy storage.rules.');
+          } else {
+            toast.error('Kunne ikke laste opp PDF. Prøv igjen.');
+          }
           return;
         } finally {
           setPdfUploading(false);
@@ -237,7 +242,12 @@ function JobsPage() {
           applicationData.coverLetterPdfName = coverLetterPdf.name;
         } catch (e) {
           console.error('PDF upload:', e);
-          toast.error('Kunne ikke laste opp PDF. Prøv igjen.');
+          const code = e?.code || '';
+          if (code === 'storage/unauthorized') {
+            toast.error('Ingen tilgang til å laste opp PDF. Aktiver Firebase Storage og deploy storage.rules.');
+          } else {
+            toast.error('Kunne ikke laste opp PDF. Prøv igjen.');
+          }
           return;
         } finally {
           setPdfUploading(false);

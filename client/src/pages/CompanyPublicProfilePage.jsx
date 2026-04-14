@@ -57,6 +57,12 @@ function CompanyPublicProfilePage() {
   const viewerCompanyId = isCompanyAccount ? currentUser?.uid : null;
 
   useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("company-profile-hide-scrollbar");
+    return () => root.classList.remove("company-profile-hide-scrollbar");
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function load() {
@@ -302,6 +308,16 @@ function CompanyPublicProfilePage() {
 
           <div className="company-public-identity-text">
             <h1 className="company-public-title">{displayName}</h1>
+            {currentUser && isJobseeker && !isOwnCompany && companyId ? (
+              <p className="company-public-messages-cta">
+                <Link
+                  to={`/meldinger?with=${companyId}`}
+                  className="button secondary small"
+                >
+                  Send melding til bedriften
+                </Link>
+              </p>
+            ) : null}
             <div className="company-public-chips">
               {profile.industry ? (
                 <span className="company-public-chip company-public-chip--accent">

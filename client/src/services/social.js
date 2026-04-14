@@ -244,9 +244,18 @@ export async function sendFriendRequest(db, fromUid, toUid) {
   if (!fromUid || !toUid || fromUid === toUid) return;
   if (await areFriends(db, fromUid, toUid)) return;
   const pk = pairKey(fromUid, toUid);
-  const existing = await getDoc(doc(db, "friendRequests", pk));
-  if (existing.exists() && existing.data().status === "pending") return;
-  await setDoc(doc(db, "friendRequests", pk), {
+  const ref = doc(db, "friendRequests", pk);
+  const existing = await getDoc(ref);
+  if (existing.exists()) {
+    const d = existing.data();
+    if (d.status === "pending") {
+      if (d.fromUid === fromUid) return;
+      if (d.toUid === fromUid) return;
+    }
+    // Regler tillater ikke update på friendRequests; gjenbruk av doc-id krever sletting først.
+    await deleteDoc(ref);
+  }
+  await setDoc(ref, {
     fromUid,
     toUid,
     status: "pending",
@@ -447,6 +456,19 @@ export async function fetchCompanyLogoUrl(db, companyId) {
     if (!s.exists()) return null;
     const img = s.data().companyImage;
     return img && String(img).trim() ? String(img).trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Profilbilde eller bedriftslogo for chat (etter userType). */
+export async function fetchParticipantAvatarUrl(db, uid) {
+  if (!uid) return null;
+  try {
+    const u = await getDoc(doc(db, "users", uid));
+    const ut = u.exists() ? u.data()?.userType : "";
+    if (ut === "company") return fetchCompanyLogoUrl(db, uid);
+    return fetchProfilePhotoUrl(db, uid);
   } catch {
     return null;
   }

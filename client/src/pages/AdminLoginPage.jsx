@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
+import { messageForGoogleAuthError } from "../utils/googleAuthErrors";
+import { PLATFORM_ADMIN_EMAIL } from "../config/adminEmail";
 import "../styles/Auth.css";
-
-// Din admin-epost - kun denne kan logge inn som admin
-const ADMIN_EMAIL = "linneahetty94@gmail.com";
 
 function AdminLoginPage() {
   const [error, setError] = useState("");
@@ -22,7 +21,7 @@ function AdminLoginPage() {
       const result = await signInWithPopup(auth, googleProvider);
 
       // Sjekk at det er riktig admin-epost
-      if (result.user.email !== ADMIN_EMAIL) {
+      if (result.user.email !== PLATFORM_ADMIN_EMAIL) {
         setError("Du har ikke admin-tilgang");
         setLoading(false);
         return;
@@ -33,11 +32,7 @@ function AdminLoginPage() {
       navigate("/admin/dashboard");
     } catch (error) {
       console.error("Admin innlogging feilet:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        setError("Innlogging avbrutt");
-      } else {
-        setError("Kunne ikke logge inn");
-      }
+      setError(messageForGoogleAuthError(error));
     }
     setLoading(false);
   }

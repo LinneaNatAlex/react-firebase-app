@@ -1,0 +1,15 @@
+# Netlify: monorepo med frontend i client/
+# base gjør at publish = "dist" peker på client/dist etter bygg.
+[build]
+  base = "client"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA (React Router) — samme som tidligere public/_redirects
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

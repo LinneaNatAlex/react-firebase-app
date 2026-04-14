@@ -1,7 +1,7 @@
 // Dashboard for privatkonto (userType jobseeker) – CV, søknader og profil
 
 import { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { collection, query, where, getDocs, doc, setDoc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -10,6 +10,8 @@ import { syncPublicProfileImageFromCv } from '../services/social';
 import { buildUserSearchNameLower } from '../utils/searchName';
 import UserNetworkPanel from '../components/UserNetworkPanel';
 import IncomingFriendRequestsPanel from '../components/IncomingFriendRequestsPanel';
+import IncomingReferencesPanel from '../components/IncomingReferencesPanel';
+import CvPublicPdfAttachments from '../components/CvPublicPdfAttachments';
 import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
 import JobseekerCoverLetterLibraryPanel from '../components/JobseekerCoverLetterLibraryPanel';
 import ConfirmModal from '../components/ConfirmModal';
@@ -39,6 +41,8 @@ function writeDismissedMessageAppIds(uid, idSet) {
 function UserDashboard() {
   const { currentUser, userData, refreshUserData } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const toast = useToast();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +78,7 @@ function UserDashboard() {
     coverImage: '',
     publicHeadline: '',
     publicIntro: '',
+    cvPdfAttachments: [],
   });
 
   // Henter søknader og profil
@@ -130,12 +135,48 @@ function UserDashboard() {
       setActiveTab('cover-letter-library');
     } else if (tab === 'public-profile') {
       setActiveTab('public-profile');
-    } else if (tab === 'notifications') {
-      setActiveTab('notifications');
+    } else if (tab === 'settings' || tab === 'notifications') {
+      setActiveTab('settings');
     } else if (tab === 'applications') {
       setActiveTab('applications');
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (location.hash !== '#incoming-references') return;
+    const t = window.setTimeout(() => {
+      document.getElementById('incoming-references')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 200);
+    return () => window.clearTimeout(t);
+  }, [location.hash, searchParams, activeTab, loading]);
+
+  function scrollToIncomingReferencesPanel(delayMs) {
+    window.setTimeout(() => {
+      document.getElementById('incoming-references')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, delayMs);
+  }
+
+  function goToIncomingReferences() {
+    setMobileNavOpen(false);
+    const path = '/dashboard/user';
+    const wantHash = '#incoming-references';
+    if (location.pathname !== path) {
+      navigate(`${path}${wantHash}`);
+      scrollToIncomingReferencesPanel(450);
+      return;
+    }
+    if (window.location.hash !== wantHash) {
+      window.location.hash = 'incoming-references';
+    }
+    scrollToIncomingReferencesPanel(120);
+  }
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -270,10 +311,11 @@ function UserDashboard() {
     
     setSaving(true);
     try {
+      const { cvPdfAttachments: _cvPdfOmit, ...profileWithoutPdfList } = profile;
       await setDoc(
         doc(db, 'profiles', currentUser.uid),
         {
-          ...profile,
+          ...profileWithoutPdfList,
           updatedAt: new Date(),
         },
         { merge: true },
@@ -492,6 +534,13 @@ function UserDashboard() {
             <Link to="/profil/me/cv" className="sidebar-nav-link">
               CV-side (lenke)
             </Link>
+            <Link
+              to="/profil/me/cv#referanser"
+              className="sidebar-nav-link"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Be om skriftlig referanse
+            </Link>
             <button
               type="button"
               className={`sidebar-nav-link${activeTab === 'network' ? ' active' : ''}`}
@@ -502,6 +551,13 @@ function UserDashboard() {
               }}
             >
               Nettverk & tips
+            </button>
+            <button
+              type="button"
+              className="sidebar-nav-link"
+              onClick={goToIncomingReferences}
+            >
+              Referanser å skrive
             </button>
           </div>
 
@@ -544,16 +600,23 @@ function UserDashboard() {
 
           <p className="sidebar-label sidebar-label--spaced">Konto</p>
           <div className="sidebar-nav-stack">
+            <Link
+              to="/meldinger"
+              className="sidebar-nav-link"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Meldinger
+            </Link>
             <button
               type="button"
-              className={`sidebar-nav-link${activeTab === 'notifications' ? ' active' : ''}`}
+              className={`sidebar-nav-link${activeTab === 'settings' ? ' active' : ''}`}
               onClick={() => {
-                setActiveTab('notifications');
-                setSearchParams({ tab: 'notifications' });
+                setActiveTab('settings');
+                setSearchParams({ tab: 'settings' });
                 setMobileNavOpen(false);
               }}
             >
-              Varslingsinnstillinger
+              Instillinger
             </button>
           </div>
 
@@ -566,6 +629,7 @@ function UserDashboard() {
 
       <main className="dashboard-main">
         <IncomingFriendRequestsPanel />
+        <IncomingReferencesPanel />
 
         {activeTab === 'public-profile' && (
           <>
@@ -916,6 +980,13 @@ function UserDashboard() {
                     placeholder="F.eks: Norsk (morsmål), Engelsk (flytende)"
                   />
                 </div>
+
+                <CvPublicPdfAttachments
+                  profile={profile}
+                  setProfile={setProfile}
+                  userId={currentUser?.uid}
+                  toast={toast}
+                />
               </div>
             </div>
 
@@ -946,7 +1017,7 @@ function UserDashboard() {
           />
         )}
 
-        {activeTab === 'notifications' && <NotificationSettingsPanel />}
+        {activeTab === 'settings' && <NotificationSettingsPanel />}
 
         {activeTab === 'network' && (
           <div className="dashboard-content dashboard-content--network">

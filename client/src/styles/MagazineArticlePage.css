@@ -108,6 +108,26 @@
   border-radius: var(--radius-md);
 }
 
+.magazine-article-body .magazine-video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  height: 0;
+  margin: 1.35rem 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: #1a1a1a;
+}
+
+.magazine-article-body .magazine-video-wrapper .magazine-video-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 .magazine-article-body ul,
 .magazine-article-body ol {
   margin: 0 0 1rem 1.25rem;

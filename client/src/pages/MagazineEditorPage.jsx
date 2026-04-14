@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -12,9 +12,15 @@ import {
   stripHtml,
   unpublishArticle,
 } from "../services/magazineArticles";
+import {
+  insertVideoAtSelection,
+  registerMagazineVideoBlot,
+} from "../utils/magazineQuillVideo";
 import ConfirmModal from "../components/ConfirmModal";
 import "../styles/ConfirmModal.css";
 import "../styles/MagazineEditorPage.css";
+
+registerMagazineVideoBlot();
 
 const quillModules = {
   toolbar: [
@@ -48,6 +54,7 @@ const quillFormats = [
   "code-block",
   "link",
   "image",
+  "video",
 ];
 
 function firebaseErrMessage(e) {
@@ -64,6 +71,7 @@ export default function MagazineEditorPage() {
   const navigate = useNavigate();
   const { currentUser, userData, refreshUserData } = useAuth();
   const { success, error: toastError } = useToast();
+  const quillRef = useRef(null);
   /** Satt fra Firestore i load() – ikke bare userData (kan være utdatert i context) */
   const [isEditorRole, setIsEditorRole] = useState(false);
 
@@ -204,6 +212,25 @@ export default function MagazineEditorPage() {
   function openUnpublishModal() {
     if (!articleId || !isEditorRole || saving) return;
     setUnpublishModalOpen(true);
+  }
+
+  function handleInsertVideo() {
+    const raw = window.prompt(
+      "Lim inn lenke til YouTube eller Vimeo (innebygd spiller i brødteksten):",
+      "",
+    );
+    if (raw == null || !String(raw).trim()) return;
+    const quill = quillRef.current?.getEditor?.();
+    if (!quill) {
+      toastError("Kunne ikke finne tekstfeltet.");
+      return;
+    }
+    const ok = insertVideoAtSelection(quill, raw.trim());
+    if (!ok) {
+      toastError(
+        "Kunne ikke bruke denne lenken. Bruk en vanlig YouTube- eller Vimeo-adresse.",
+      );
+    }
   }
 
   async function runUnpublish() {
@@ -370,8 +397,23 @@ export default function MagazineEditorPage() {
         ) : null}
       </div>
 
+      <div className="magazine-editor-video-row">
+        <button
+          type="button"
+          className="magazine-editor-video-btn"
+          onClick={handleInsertVideo}
+        >
+          Sett inn video (YouTube / Vimeo)
+        </button>
+        <span className="magazine-editor-video-hint">
+          Sett markøren der videoen skal stå. Støtter vanlige delingslenker og
+          /embed/-adresser.
+        </span>
+      </div>
+
       <div className="magazine-editor-quill-wrap">
         <ReactQuill
+          ref={quillRef}
           theme="snow"
           value={bodyHtml}
           onChange={setBodyHtml}

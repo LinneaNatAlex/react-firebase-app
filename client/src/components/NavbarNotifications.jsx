@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -6,12 +6,22 @@ import {
   subscribeToNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteAllNotifications,
 } from "../services/notifications";
 import { fetchProfilePhotoUrl, fetchCompanyLogoUrl } from "../services/social";
+import { useToast } from "./Toast";
+import ConfirmModal from "./ConfirmModal";
+import "../styles/ConfirmModal.css";
 
 function notificationHref(n) {
   if (n.type === "application_update") {
     return "/dashboard/user?tab=applications";
+  }
+  if (n.type === "reference_request") {
+    return "/dashboard/user#incoming-references";
+  }
+  if (n.type === "chat_message" && n.conversationId) {
+    return `/meldinger/${n.conversationId}`;
   }
   if (n.type === "company_follow_company") {
     return `/bedrift/${n.actorId}`;
@@ -20,6 +30,55 @@ function notificationHref(n) {
 }
 
 const PREVIEW_LIMIT = 15;
+
+function createdAtMs(n) {
+  const c = n?.createdAt;
+  if (!c) return 0;
+  return c.toMillis?.() ?? (c.seconds != null ? c.seconds * 1000 : 0);
+}
+
+/**
+ * Slår sammen flere chat_message med samme conversationId til én rad (tekst + antall).
+ */
+function buildNotificationDisplayRows(items) {
+  const chatByConv = new Map();
+  const rest = [];
+  for (const n of items) {
+    if (n.type === "chat_message" && n.conversationId) {
+      const arr = chatByConv.get(n.conversationId) || [];
+      arr.push(n);
+      chatByConv.set(n.conversationId, arr);
+    } else {
+      rest.push(n);
+    }
+  }
+  const rows = [];
+  for (const n of rest) {
+    rows.push({ kind: "single", n });
+  }
+  for (const [, notifs] of chatByConv) {
+    notifs.sort((a, b) => createdAtMs(b) - createdAtMs(a));
+    const first = notifs[0];
+    rows.push({
+      kind: "chat_group",
+      id: `chat_group_${first.conversationId}`,
+      conversationId: first.conversationId,
+      actorId: first.actorId,
+      actorLabel: first.actorLabel,
+      notifications: notifs,
+      messageCount: notifs.length,
+      unreadCount: notifs.filter((x) => !x.read).length,
+      read: notifs.every((x) => x.read),
+      createdAt: Math.max(...notifs.map(createdAtMs)),
+    });
+  }
+  rows.sort((a, b) => {
+    const ta = a.kind === "single" ? createdAtMs(a.n) : a.createdAt;
+    const tb = b.kind === "single" ? createdAtMs(b.n) : b.createdAt;
+    return tb - ta;
+  });
+  return rows;
+}
 
 function notificationText(n) {
   const name = n.actorLabel || "Noen";
@@ -32,10 +91,14 @@ function notificationText(n) {
       return `${name} sendte en venneforespørsel.`;
     case "friend_accepted":
       return `${name} godtok – dere er venner.`;
+    case "reference_request":
+      return `${name} ber om skriftlig referanse (venner).`;
     case "application_update": {
       const job = n.jobTitle ? ` · ${n.jobTitle}` : "";
       return `${n.previewText || "Søknad oppdatert"}${job} (${name})`;
     }
+    case "chat_message":
+      return `Du har fått chatmelding fra ${name}.`;
     default:
       return "Ny aktivitet.";
   }
@@ -43,11 +106,14 @@ function notificationText(n) {
 
 export default function NavbarNotifications() {
   const { currentUser } = useAuth();
+  const { success, error: toastError } = useToast();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [avatarByActor, setAvatarByActor] = useState({});
   const [expanded, setExpanded] = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -74,6 +140,8 @@ export default function NavbarNotifications() {
     });
     return unsub;
   }, [currentUser?.uid]);
+
+  const displayRows = useMemo(() => buildNotificationDisplayRows(items), [items]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,19 +184,50 @@ export default function NavbarNotifications() {
     setOpen(false);
   }
 
+  async function handleOpenChatGroup(notifs) {
+    if (!currentUser?.uid || !notifs?.length) return;
+    try {
+      await Promise.all(
+        notifs.map((x) => markNotificationRead(db, currentUser.uid, x.id)),
+      );
+    } catch (e) {
+      console.warn(e);
+    }
+    setOpen(false);
+  }
+
   async function handleMarkAll() {
     if (!currentUser?.uid || items.length === 0) return;
     try {
       await markAllNotificationsRead(db, currentUser.uid, items);
     } catch (e) {
       console.warn(e);
+      toastError("Kunne ikke oppdatere varsler.");
+    }
+  }
+
+  async function runClearAll() {
+    if (!currentUser?.uid || items.length === 0) return;
+    setClearing(true);
+    try {
+      await deleteAllNotifications(db, currentUser.uid, items);
+      setClearModalOpen(false);
+      success("Varslene er fjernet");
+    } catch (e) {
+      console.warn(e);
+      toastError(
+        "Kunne ikke tømme varsler. Sjekk at Firestore-reglene er publisert (sletting tillatt for din konto).",
+      );
+      setClearModalOpen(false);
+    } finally {
+      setClearing(false);
     }
   }
 
   if (!currentUser) return null;
 
-  const showList = expanded ? items : items.slice(0, PREVIEW_LIMIT);
-  const olderCount = Math.max(0, items.length - PREVIEW_LIMIT);
+  const showList = expanded ? displayRows : displayRows.slice(0, PREVIEW_LIMIT);
+  const olderCount = Math.max(0, displayRows.length - PREVIEW_LIMIT);
 
   return (
     <div className="navbar-notifications" ref={wrapRef}>
@@ -157,11 +256,26 @@ export default function NavbarNotifications() {
         <div className="navbar-notifications-dropdown" role="dialog" aria-label="Varsler">
           <div className="navbar-notifications-header">
             <span className="navbar-notifications-title">Varsler</span>
-            {unreadCount > 0 ? (
-              <button type="button" className="navbar-notifications-markall" onClick={handleMarkAll}>
-                Merk alle lest
-              </button>
-            ) : null}
+            <div className="navbar-notifications-header-actions">
+              {unreadCount > 0 ? (
+                <button
+                  type="button"
+                  className="navbar-notifications-markall"
+                  onClick={handleMarkAll}
+                >
+                  Merk alle lest
+                </button>
+              ) : null}
+              {items.length > 0 ? (
+                <button
+                  type="button"
+                  className="navbar-notifications-clearall"
+                  onClick={() => setClearModalOpen(true)}
+                >
+                  Tøm liste
+                </button>
+              ) : null}
+            </div>
           </div>
           {items.length === 0 ? (
             <p className="navbar-notifications-empty">Ingen varsler ennå.</p>
@@ -170,7 +284,47 @@ export default function NavbarNotifications() {
               <ul
                 className={`navbar-notifications-list${expanded ? " navbar-notifications-list--scrollable" : ""}`}
               >
-                {showList.map((n) => {
+                {showList.map((row) => {
+                  if (row.kind === "chat_group") {
+                    const photo = avatarByActor[row.actorId];
+                    const initial = (row.actorLabel || "?").charAt(0).toUpperCase();
+                    const name = row.actorLabel || "Noen";
+                    const unread = row.unreadCount > 0;
+                    return (
+                      <li key={row.id}>
+                        <Link
+                          to={`/meldinger/${row.conversationId}`}
+                          className={`navbar-notifications-item${unread ? " is-unread" : ""}`}
+                          onClick={() => {
+                            void handleOpenChatGroup(row.notifications);
+                          }}
+                        >
+                          <span className="navbar-notifications-avatar-wrap">
+                            {photo ? (
+                              <img src={photo} alt="" className="navbar-notifications-avatar" />
+                            ) : (
+                              <span className="navbar-notifications-avatar-fallback" aria-hidden>
+                                {initial}
+                              </span>
+                            )}
+                          </span>
+                          <span className="navbar-notifications-text">
+                            Du har fått chatmelding fra {name}
+                          </span>
+                          <span
+                            className="navbar-notifications-msg-count"
+                            aria-label={`${row.messageCount} meldinger`}
+                          >
+                            {row.messageCount}
+                          </span>
+                          <span className="navbar-notifications-chevron" aria-hidden>
+                            →
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  }
+                  const n = row.n;
                   const photo = avatarByActor[n.actorId];
                   const initial = (n.actorLabel || "?").charAt(0).toUpperCase();
                   return (
@@ -178,7 +332,20 @@ export default function NavbarNotifications() {
                       <Link
                         to={notificationHref(n)}
                         className={`navbar-notifications-item${n.read ? "" : " is-unread"}`}
-                        onClick={() => handleOpenItem(n.id)}
+                        onClick={() => {
+                          void handleOpenItem(n.id);
+                          if (n.type === "reference_request") {
+                            window.setTimeout(() => {
+                              if (window.location.pathname !== "/dashboard/user") return;
+                              if (window.location.hash !== "#incoming-references") {
+                                window.location.hash = "incoming-references";
+                              }
+                              document
+                                .getElementById("incoming-references")
+                                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }, 400);
+                          }
+                        }}
                       >
                         <span className="navbar-notifications-avatar-wrap">
                           {photo ? (
@@ -223,6 +390,22 @@ export default function NavbarNotifications() {
           )}
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={clearModalOpen}
+        onClose={() => !clearing && setClearModalOpen(false)}
+        title="Tømme varsler?"
+        confirmLabel="Ja, fjern alle"
+        cancelLabel="Avbryt"
+        variant="danger"
+        confirmBusy={clearing}
+        onConfirm={runClearAll}
+      >
+        <p className="confirm-modal-body-tail">
+          Alle varsler i listen slettes permanent. Nye varsler kan fortsatt komme
+          senere.
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

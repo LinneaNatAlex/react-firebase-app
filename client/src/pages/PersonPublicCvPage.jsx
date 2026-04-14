@@ -1,17 +1,32 @@
 // Full CV-visning for jobbsøker – egen URL, ikke samme som offentlig «profilside»
+// Tekstfelt → HTML: se kommentarer ved hver seksjon og utils/splitProfileIntroParagraphs.js
 
 import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { Link, useParams, useLocation } from 'react-router-dom';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import ProfileReferencesSection from '../components/ProfileReferencesSection';
+import {
+  splitCvMultilineParagraphs,
+  splitProfileIntroParagraphs,
+} from '../utils/splitProfileIntroParagraphs';
+import { openPdfBase64InNewTab } from '../utils/pdfBase64Blob';
 import '../styles/CompanyProfilePage.css';
 
 function PersonPublicCvPage() {
   const { userId } = useParams();
+  const location = useLocation();
   const [userRow, setUserRow] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [publicPdfDocs, setPublicPdfDocs] = useState([]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('person-public-hide-scrollbar');
+    return () => root.classList.remove('person-public-hide-scrollbar');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +60,17 @@ function PersonPublicCvPage() {
         const profSnap = await getDoc(doc(db, 'profiles', userId));
         if (cancelled) return;
         setProfile(profSnap.exists() ? profSnap.data() : {});
+        try {
+          const pdfSnap = await getDocs(collection(db, 'profiles', userId, 'publicPdfs'));
+          if (!cancelled) {
+            setPublicPdfDocs(
+              pdfSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+            );
+          }
+        } catch (pdfErr) {
+          console.warn('publicPdfs:', pdfErr);
+          if (!cancelled) setPublicPdfDocs([]);
+        }
         setNotFound(false);
       } catch (e) {
         console.error(e);
@@ -59,6 +85,19 @@ function PersonPublicCvPage() {
       cancelled = true;
     };
   }, [userId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (loading || notFound || !userRow || userRow.userType === 'company') return;
+    if (location.hash !== '#referanser') return;
+    const t = window.setTimeout(() => {
+      document.getElementById('referanser')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [loading, notFound, userRow, location.hash]);
 
   if (loading) {
     return (
@@ -167,10 +206,18 @@ function PersonPublicCvPage() {
               </section>
             ) : null}
 
+            {/* Sammendrag / korte felt: splitProfileIntroParagraphs (flytende avsnitt). */}
             {profile?.summary ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Profil / sammendrag</h2>
-                <div className="person-public-body-text">{profile.summary}</div>
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {splitProfileIntroParagraphs(profile.summary).map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
               </section>
             ) : null}
 
@@ -178,41 +225,88 @@ function PersonPublicCvPage() {
             profile.desiredPosition.trim() !== (profile?.jobTitle || '').trim() ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Ønsket stilling</h2>
-                <p className="person-public-body-text">{profile.desiredPosition}</p>
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {splitProfileIntroParagraphs(profile.desiredPosition).map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </div>
               </section>
             ) : null}
 
+            {/* Erfaring / utdanning / ferdigheter: splitCvMultilineParagraphs + CSS --multiline */}
             {profile?.experience ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Erfaring</h2>
-                <div className="person-public-body-text person-public-preline">{profile.experience}</div>
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {splitCvMultilineParagraphs(profile.experience).map((para, i) => (
+                    <p key={i} className="person-public-body-text--multiline">
+                      {para}
+                    </p>
+                  ))}
+                </div>
               </section>
             ) : null}
 
             {profile?.education ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Utdanning</h2>
-                <div className="person-public-body-text person-public-preline">{profile.education}</div>
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {splitCvMultilineParagraphs(profile.education).map((para, i) => (
+                    <p key={i} className="person-public-body-text--multiline">
+                      {para}
+                    </p>
+                  ))}
+                </div>
               </section>
             ) : null}
 
             {profile?.skills ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Ferdigheter</h2>
-                <p className="person-public-skills">{profile.skills}</p>
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {splitCvMultilineParagraphs(profile.skills).map((para, i) => (
+                    <p key={i} className="person-public-body-text--multiline">
+                      {para}
+                    </p>
+                  ))}
+                </div>
               </section>
             ) : null}
 
+            {/* Språk: vanligvis tekst fra skjema; objekt = eldre data */}
             {profile?.languages ? (
               <section className="person-public-panel">
                 <h2 className="person-public-panel-title">Språk</h2>
-                <p className="person-public-body-text">
-                  {typeof profile.languages === 'object'
-                    ? JSON.stringify(profile.languages)
-                    : String(profile.languages)}
-                </p>
+                <div
+                  className="person-public-body-text person-public-body-text--prose"
+                  lang="nb"
+                >
+                  {typeof profile.languages === 'object' ? (
+                    <p className="person-public-body-text--multiline">
+                      {JSON.stringify(profile.languages)}
+                    </p>
+                  ) : (
+                    splitProfileIntroParagraphs(String(profile.languages)).map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))
+                  )}
+                </div>
               </section>
             ) : null}
+
+            <ProfileReferencesSection subjectUid={userId} />
           </div>
 
           <aside className="person-public-aside" aria-label="Kontakt">
@@ -236,6 +330,48 @@ function PersonPublicCvPage() {
                 <p className="person-public-aside-muted">Ingen kontaktinfo lagt inn.</p>
               ) : null}
             </div>
+
+            {(() => {
+              const legacy = (Array.isArray(profile?.cvPdfAttachments)
+                ? profile.cvPdfAttachments
+                : []
+              ).filter((a) => a?.downloadUrl && a?.id);
+              const fromDb = publicPdfDocs.filter((d) => d?.dataBase64 && d?.id);
+              const hasDocs = legacy.length > 0 || fromDb.length > 0;
+              if (!hasDocs) return null;
+              return (
+              <div className="person-public-aside-card person-public-aside-card--docs">
+                <h3 className="person-public-aside-title">Dokumenter</h3>
+                <ul className="person-public-doc-list">
+                  {fromDb.map((d) => (
+                    <li key={d.id} className="person-public-doc-item">
+                      <button
+                        type="button"
+                        className="person-public-doc-link person-public-doc-link--button"
+                        onClick={() => openPdfBase64InNewTab(d.dataBase64)}
+                      >
+                        {d.title || d.fileName || 'PDF'}
+                      </button>
+                      <span className="person-public-doc-badge">PDF</span>
+                    </li>
+                  ))}
+                  {legacy.map((a) => (
+                    <li key={a.id} className="person-public-doc-item">
+                      <a
+                        href={a.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="person-public-doc-link"
+                      >
+                        {a.title || a.fileName || 'PDF'}
+                      </a>
+                      <span className="person-public-doc-badge">PDF</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              );
+            })()}
           </aside>
         </div>
       </div>

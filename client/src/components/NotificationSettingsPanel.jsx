@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "./Toast";
@@ -8,6 +9,8 @@ import {
   DEFAULT_NOTIFICATION_SETTINGS,
 } from "../services/notifications";
 import AccountDeletionSection from "./AccountDeletionSection";
+import BlockedUsersPanel from "./BlockedUsersPanel";
+import { setTheme, cacheThemeForUid } from "../theme";
 
 function ToggleRow({ id, label, description, checked, disabled, onChange }) {
   return (
@@ -29,12 +32,20 @@ function ToggleRow({ id, label, description, checked, disabled, onChange }) {
 }
 
 export default function NotificationSettingsPanel() {
-  const { currentUser, userData } = useAuth();
+  const { currentUser, userData, refreshUserData } = useAuth();
   const isJobseeker = userData?.userType === "jobseeker";
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_NOTIFICATION_SETTINGS }));
+  const [darkMode, setDarkMode] = useState(
+    () => userData?.themePreference === "dark",
+  );
+  const [darkModeSaving, setDarkModeSaving] = useState(false);
+
+  useEffect(() => {
+    setDarkMode(userData?.themePreference === "dark");
+  }, [userData?.themePreference]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,10 +89,33 @@ export default function NotificationSettingsPanel() {
 
   const masterOn = settings.notificationsEnabled;
 
+  async function handleDarkMode(checked) {
+    if (!currentUser?.uid) return;
+    const mode = checked ? "dark" : "light";
+    const prev = darkMode;
+    setTheme(mode);
+    setDarkMode(checked);
+    setDarkModeSaving(true);
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        themePreference: mode,
+      });
+      cacheThemeForUid(currentUser.uid, mode);
+      await refreshUserData();
+    } catch (e) {
+      console.error(e);
+      toast.error("Kunne ikke lagre mørk modus.");
+      setTheme(prev ? "dark" : "light");
+      setDarkMode(prev);
+    } finally {
+      setDarkModeSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="dashboard-content">
-        <p className="loading-text">Laster varslingsinnstillinger…</p>
+        <p className="loading-text">Laster innstillinger…</p>
       </div>
     );
   }
@@ -90,21 +124,34 @@ export default function NotificationSettingsPanel() {
     <div className="dashboard-content notification-settings-page">
       <header className="dashboard-header">
         <div>
-          <h1>Varslingsinnstillinger</h1>
+          <h1>Instillinger</h1>
           <p>
             {isJobseeker ? (
               <>
-                Velg hva du vil få beskjed om i bjellevarslingen. Du kan alltid se søknadsstatus under{' '}
+                Utseende og varsler for kontoen din. Søknadsstatus finner du under{' '}
                 <strong>Mine søknader</strong>.
               </>
             ) : (
-              <>Velg hva du vil få beskjed om når andre brukere eller bedrifter interagerer med kontoen din.</>
+              <>Utseende og varsler for bedriftskontoen din.</>
             )}
           </p>
         </div>
       </header>
 
       <section className="notification-settings-card">
+        <h2 className="notification-settings-section-title">Utseende</h2>
+        <ToggleRow
+          id="theme-dark"
+          label="Mørk modus"
+          description="Mørk bakgrunn i hele appen. Valget lagres på kontoen din."
+          checked={darkMode}
+          disabled={darkModeSaving}
+          onChange={handleDarkMode}
+        />
+      </section>
+
+      <section className="notification-settings-card">
+        <h2 className="notification-settings-section-title">Varsler</h2>
         <ToggleRow
           id="notif-master"
           label="Varsler på"
@@ -136,6 +183,20 @@ export default function NotificationSettingsPanel() {
           />
         </section>
       ) : null}
+
+      <section className="notification-settings-card">
+        <h2 className="notification-settings-section-title">Meldinger</h2>
+        <ToggleRow
+          id="notif-chat"
+          label="Nye chat-meldinger"
+          description="Når noen sender deg en direktemelding (profil / bedrift)."
+          checked={settings.chatMessages}
+          disabled={saving || !masterOn}
+          onChange={(v) => patch({ chatMessages: v })}
+        />
+      </section>
+
+      <BlockedUsersPanel />
 
       <section className="notification-settings-card">
         <h2 className="notification-settings-section-title">Nettverk</h2>

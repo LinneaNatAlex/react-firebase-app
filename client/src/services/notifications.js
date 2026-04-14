@@ -1,6 +1,7 @@
 /**
  * Varsler: users/{uid}/notifications/{id}
- * Typer: company_follow | company_follow_company | friend_request | friend_accepted | application_update
+ * Typer: company_follow | company_follow_company | friend_request | friend_accepted |
+ * reference_request | application_update | chat_message
  */
 
 import {
@@ -15,6 +16,7 @@ import {
   serverTimestamp,
   getDoc,
   setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
 function sortByCreatedDesc(items) {
@@ -51,6 +53,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS = {
   socialFollows: true,
   applicationStatusChanges: true,
   applicationCompanyMessages: true,
+  chatMessages: true,
 };
 
 /**
@@ -207,6 +210,42 @@ export async function notifyFriendAccepted(db, requesterUid, accepterUid) {
   });
 }
 
+/** Venn ber om skriftlig referanse (du skal skrive). */
+export async function notifyReferenceRequest(db, refereeUid, subjectUid) {
+  if (!refereeUid || !subjectUid) return;
+  const s = await getMergedNotificationSettings(db, refereeUid);
+  if (!s.notificationsEnabled) return;
+  const actorLabel = await actorLabelForUser(db, subjectUid);
+  await addDoc(collection(db, "users", refereeUid, "notifications"), {
+    type: "reference_request",
+    read: false,
+    createdAt: serverTimestamp(),
+    actorId: subjectUid,
+    actorLabel,
+  });
+}
+
+/** Ny chat-melding – mottaker får varsel (ingen meldingstekst; visning grupperes per samtale i UI). */
+export async function notifyChatMessage(db, recipientUid, senderUid, conversationId) {
+  if (!recipientUid || !senderUid || recipientUid === senderUid) return;
+  const s = await getMergedNotificationSettings(db, recipientUid);
+  if (!s.notificationsEnabled || !s.chatMessages) return;
+  const senderSnap = await getDoc(doc(db, "users", senderUid));
+  const st = senderSnap.exists() ? senderSnap.data().userType : "";
+  const actorLabel =
+    st === "company"
+      ? await actorLabelForCompany(db, senderUid)
+      : await actorLabelForUser(db, senderUid);
+  await addDoc(collection(db, "users", recipientUid, "notifications"), {
+    type: "chat_message",
+    read: false,
+    createdAt: serverTimestamp(),
+    actorId: senderUid,
+    actorLabel,
+    conversationId: conversationId || "",
+  });
+}
+
 /**
  * @param {import('firebase/firestore').Firestore} db
  * @param {string} uid
@@ -220,7 +259,9 @@ export function subscribeToNotifications(db, uid, callback) {
     qy,
     (snap) => {
       const items = sortByCreatedDesc(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((x) => !x.deleted),
       ).slice(0, 60);
       const unreadCount = items.filter((x) => !x.read).length;
       callback(items, unreadCount);
@@ -246,4 +287,48 @@ export async function markAllNotificationsRead(db, uid, items) {
     batch.update(doc(db, "users", uid, "notifications", n.id), { read: true });
   }
   await batch.commit();
+}
+
+function isPermissionDenied(e) {
+  const c = e?.code;
+  return c === "permission-denied" || c === 7;
+}
+
+/** Slett alle oppgitte varsler (batch). Prøver ekte sletting; ved gamle Firestore-regler faller vi tilbake til soft delete (update). */
+export async function deleteAllNotifications(db, uid, items) {
+  if (!uid || !items?.length) return;
+  const MAX_OPS = 450;
+  for (let i = 0; i < items.length; i += MAX_OPS) {
+    const chunk = items.slice(i, i + MAX_OPS).filter((n) => n?.id);
+    if (chunk.length === 0) continue;
+    const delBatch = writeBatch(db);
+    for (const n of chunk) {
+      delBatch.delete(doc(db, "users", uid, "notifications", n.id));
+    }
+    try {
+      await delBatch.commit();
+    } catch (e) {
+      if (!isPermissionDenied(e)) throw e;
+      const upBatch = writeBatch(db);
+      for (const n of chunk) {
+        upBatch.update(doc(db, "users", uid, "notifications", n.id), {
+          deleted: true,
+          read: true,
+        });
+      }
+      await upBatch.commit();
+    }
+  }
+}
+
+/** Slett ett varsel. Soft delete hvis Firestore-regler mangler allow delete. */
+export async function deleteNotification(db, uid, notificationId) {
+  if (!uid || !notificationId) return;
+  const ref = doc(db, "users", uid, "notifications", notificationId);
+  try {
+    await deleteDoc(ref);
+  } catch (e) {
+    if (!isPermissionDenied(e)) throw e;
+    await updateDoc(ref, { deleted: true, read: true });
+  }
 }

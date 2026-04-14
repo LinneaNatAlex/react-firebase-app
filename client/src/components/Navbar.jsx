@@ -25,8 +25,11 @@ function Navbar() {
     const items = [
       { to: "/jobs", label: "Finn jobber" },
       { to: MAGAZINE_PATH, label: MAGAZINE_NAME },
-      { to: "/priser", label: "Priser" },
     ];
+    if (currentUser) {
+      items.push({ to: "/meldinger", label: "Meldinger" });
+      items.push({ to: "/priser", label: "Priser" });
+    }
 
     if (
       userData?.newspaperRole === "journalist" ||

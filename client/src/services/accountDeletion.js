@@ -6,9 +6,11 @@
 
 import {
   collection,
+  collectionGroup,
   query,
   where,
   getDocs,
+  getDoc,
   deleteDoc,
   doc,
   writeBatch,
@@ -19,7 +21,8 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { deleteUser, signOut } from "firebase/auth";
-import { auth } from "../firebase";
+import { deleteObject, ref as storageRef } from "firebase/storage";
+import { auth, storage } from "../firebase";
 
 const DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -77,6 +80,28 @@ export async function purgeUserAccountData(db, uid, userType) {
   }
 
   try {
+    await deleteSubcollectionDocs(db, "users", uid, "blockedUsers");
+  } catch (e) {
+    console.warn("purge blockedUsers", e);
+  }
+
+  try {
+    await deleteSubcollectionDocs(db, "users", uid, "writtenReferences");
+  } catch (e) {
+    console.warn("purge writtenReferences as subject", e);
+  }
+
+  try {
+    const wq = query(
+      collectionGroup(db, "writtenReferences"),
+      where("authorUid", "==", uid),
+    );
+    await deleteQueryDocs(db, wq);
+  } catch (e) {
+    console.warn("purge writtenReferences as author", e);
+  }
+
+  try {
     const friendsSnap = await getDocs(collection(db, "users", uid, "friends"));
     for (const f of friendsSnap.docs) {
       const fid = f.id;
@@ -128,6 +153,32 @@ export async function purgeUserAccountData(db, uid, userType) {
     await deleteQueryDocs(db, appsUser);
   } catch (e) {
     console.warn("purge applications by userId", e);
+  }
+
+  try {
+    const profSnap = await getDoc(doc(db, "profiles", uid));
+    if (profSnap.exists()) {
+      const atts = profSnap.data().cvPdfAttachments;
+      if (Array.isArray(atts)) {
+        for (const a of atts) {
+          if (a?.storagePath) {
+            try {
+              await deleteObject(storageRef(storage, a.storagePath));
+            } catch (e) {
+              console.warn("purge profile pdf storage", e);
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("purge profile pdf", e);
+  }
+
+  try {
+    await deleteSubcollectionDocs(db, "profiles", uid, "publicPdfs");
+  } catch (e) {
+    console.warn("purge profiles publicPdfs", e);
   }
 
   try {
