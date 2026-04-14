@@ -151,6 +151,27 @@
   color: var(--color-text);
 }
 
+.pricing-account-type-hint {
+  margin-top: 1.5rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-md);
+  background: var(--color-tint, var(--color-bg));
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.pricing-account-type-hint a {
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.pricing-account-type-hint a:hover {
+  text-decoration: underline;
+}
+
 .pricing-faq {
   margin-top: 0.5rem;
 }

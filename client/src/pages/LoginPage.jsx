@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
+import { messageForGoogleAuthError } from "../utils/googleAuthErrors";
 import "../styles/Auth.css";
 
 function LoginPage() {
@@ -62,11 +63,7 @@ function LoginPage() {
       }
     } catch (error) {
       console.error("Google innlogging feilet:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        setError("Innlogging avbrutt");
-      } else {
-        setError("Kunne ikke logge inn med Google. Prøv igjen.");
-      }
+      setError(messageForGoogleAuthError(error));
     }
     setLoading(false);
   }

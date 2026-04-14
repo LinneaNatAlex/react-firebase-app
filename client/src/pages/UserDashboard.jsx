@@ -10,6 +10,7 @@ import { syncPublicProfileImageFromCv } from '../services/social';
 import { buildUserSearchNameLower } from '../utils/searchName';
 import UserNetworkPanel from '../components/UserNetworkPanel';
 import IncomingFriendRequestsPanel from '../components/IncomingFriendRequestsPanel';
+import IncomingReferencesPanel from '../components/IncomingReferencesPanel';
 import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
 import JobseekerCoverLetterLibraryPanel from '../components/JobseekerCoverLetterLibraryPanel';
 import ConfirmModal from '../components/ConfirmModal';
@@ -136,6 +137,18 @@ function UserDashboard() {
       setActiveTab('applications');
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#incoming-references') return;
+    const t = window.setTimeout(() => {
+      document.getElementById('incoming-references')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 200);
+    return () => window.clearTimeout(t);
+  }, [searchParams, activeTab, loading]);
 
   useEffect(() => {
     if (!currentUser?.uid) {
@@ -503,6 +516,13 @@ function UserDashboard() {
             >
               Nettverk & tips
             </button>
+            <Link
+              to="/dashboard/user#incoming-references"
+              className="sidebar-nav-link"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Referanser å skrive
+            </Link>
           </div>
 
           <p className="sidebar-label sidebar-label--spaced">CV og søknader</p>
@@ -566,6 +586,7 @@ function UserDashboard() {
 
       <main className="dashboard-main">
         <IncomingFriendRequestsPanel />
+        <IncomingReferencesPanel />
 
         {activeTab === 'public-profile' && (
           <>

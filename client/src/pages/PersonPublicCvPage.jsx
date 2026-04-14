@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import ProfileReferencesSection from '../components/ProfileReferencesSection';
 import '../styles/CompanyProfilePage.css';
 
 function PersonPublicCvPage() {
@@ -213,6 +214,8 @@ function PersonPublicCvPage() {
                 </p>
               </section>
             ) : null}
+
+            <ProfileReferencesSection subjectUid={userId} />
           </div>
 
           <aside className="person-public-aside" aria-label="Kontakt">

@@ -1,6 +1,7 @@
 /**
  * RAG: embeddings + ragChunks for bedriftens eget innhold (utlyste stillinger + stillingsbibliotek).
- * Brukes når /api/ai kalles med action jobPosting og OPENAI_API_KEY/EMBEDDINGS_API_KEY er satt.
+ * Skrudd av som standard (ingen betalt OpenAI på Node). Sett ENABLE_OPENAI_RAG=1 og OPENAI_API_KEY
+ * kun hvis du bevisst vil bruke OpenAI-embeddings – ikke en del av standardoppsettet.
  */
 
 const OPENAI_EMBED_URL = 'https://api.openai.com/v1/embeddings';
@@ -198,6 +199,7 @@ export async function syncCompanyCorpus(db, companyId, embedApiKey) {
 }
 
 export async function buildRagContextForAction(db, { uid, action, payload, embedApiKey }) {
+  if ((process.env.ENABLE_OPENAI_RAG || '').trim() !== '1') return '';
   if (!embedApiKey || action !== 'jobPosting') return '';
 
   try {

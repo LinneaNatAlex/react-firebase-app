@@ -6,6 +6,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Samme e-post som client/src/config/adminEmail.js (Google-innlogging)
+    function isPlatformAdmin() {
+      return request.auth != null &&
+        request.auth.token.email == 'linneahetty94@gmail.com';
+    }
+
     function newspaperRole() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -19,6 +25,40 @@ service cloud.firestore {
 
     function isNewspaperEditor() {
       return request.auth != null && newspaperRole() == 'editor';
+    }
+
+    function areFriendsPair(a, b) {
+      return exists(/databases/$(database)/documents/users/$(a)/friends/$(b));
+    }
+
+    match /users/{subjectUid}/writtenReferences/{authorUid} {
+      allow read: if resource.data.status == 'published' ||
+        (request.auth != null && (
+          request.auth.uid == subjectUid || request.auth.uid == authorUid
+        ));
+
+      allow create: if request.auth != null &&
+        request.auth.uid == subjectUid &&
+        !exists(/databases/$(database)/documents/users/$(subjectUid)/writtenReferences/$(authorUid)) &&
+        areFriendsPair(subjectUid, authorUid) &&
+        request.resource.data.subjectUid == subjectUid &&
+        request.resource.data.authorUid == authorUid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.body == '';
+
+      allow update: if request.auth != null &&
+        request.auth.uid == authorUid &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'published' &&
+        request.resource.data.body is string &&
+        request.resource.data.body.size() >= 20 &&
+        request.resource.data.body.size() <= 4000 &&
+        request.resource.data.subjectUid == resource.data.subjectUid &&
+        request.resource.data.authorUid == resource.data.authorUid;
+
+      allow delete: if request.auth != null && (
+        request.auth.uid == subjectUid || request.auth.uid == authorUid
+      );
     }
 
     match /magazineArticles/{articleId} {
@@ -79,11 +119,14 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null &&
         request.resource.data.companyId == request.auth.uid;
-      allow update, delete: if request.auth != null &&
-        resource.data.companyId == request.auth.uid;
+      allow update, delete: if request.auth != null && (
+        resource.data.companyId == request.auth.uid || isPlatformAdmin()
+      );
     }
 
     match /applications/{appId} {
+      // Egen linje for admin: ellers kan list-queries (getDocs uten where) feile når regelen blander resource.data med OR.
+      allow read: if isPlatformAdmin();
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
         resource.data.companyId == request.auth.uid
@@ -138,8 +181,16 @@ service cloud.firestore {
     }
 
     match /friendRequests/{pairKey} {
-      allow read: if request.auth != null &&
-        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      // get på manglende dokument: resource finnes ikke — må tillate eksplisitt (ellers permission-denied).
+      allow get: if request.auth != null && (
+        !exists(/databases/$(database)/documents/friendRequests/$(pairKey)) ||
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      );
+      allow list: if request.auth != null && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      );
       allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
       allow delete: if request.auth != null &&
         (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
@@ -150,9 +201,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
-      // Egen konto (kontosletting); ikke admin – AdminDashboard trenger egne regler/Cloud Functions for full tilgang
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (
+        request.auth.uid == userId || isPlatformAdmin()
+      );
+      allow delete: if request.auth != null && (
+        request.auth.uid == userId || isPlatformAdmin()
+      );
     }
 
     match /users/{userId}/notifications/{notificationId} {
@@ -160,7 +214,7 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null &&
         request.resource.data.actorId == request.auth.uid;
-      allow delete: if false;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

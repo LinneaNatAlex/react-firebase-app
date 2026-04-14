@@ -6,12 +6,19 @@ import {
   subscribeToNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteAllNotifications,
 } from "../services/notifications";
 import { fetchProfilePhotoUrl, fetchCompanyLogoUrl } from "../services/social";
+import { useToast } from "./Toast";
+import ConfirmModal from "./ConfirmModal";
+import "../styles/ConfirmModal.css";
 
 function notificationHref(n) {
   if (n.type === "application_update") {
     return "/dashboard/user?tab=applications";
+  }
+  if (n.type === "reference_request") {
+    return "/dashboard/user#incoming-references";
   }
   if (n.type === "company_follow_company") {
     return `/bedrift/${n.actorId}`;
@@ -32,6 +39,8 @@ function notificationText(n) {
       return `${name} sendte en venneforespørsel.`;
     case "friend_accepted":
       return `${name} godtok – dere er venner.`;
+    case "reference_request":
+      return `${name} ber om skriftlig referanse (venner).`;
     case "application_update": {
       const job = n.jobTitle ? ` · ${n.jobTitle}` : "";
       return `${n.previewText || "Søknad oppdatert"}${job} (${name})`;
@@ -43,11 +52,14 @@ function notificationText(n) {
 
 export default function NavbarNotifications() {
   const { currentUser } = useAuth();
+  const { success, error: toastError } = useToast();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [avatarByActor, setAvatarByActor] = useState({});
   const [expanded, setExpanded] = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -122,6 +134,25 @@ export default function NavbarNotifications() {
       await markAllNotificationsRead(db, currentUser.uid, items);
     } catch (e) {
       console.warn(e);
+      toastError("Kunne ikke oppdatere varsler.");
+    }
+  }
+
+  async function runClearAll() {
+    if (!currentUser?.uid || items.length === 0) return;
+    setClearing(true);
+    try {
+      await deleteAllNotifications(db, currentUser.uid, items);
+      setClearModalOpen(false);
+      success("Varslene er fjernet");
+    } catch (e) {
+      console.warn(e);
+      toastError(
+        "Kunne ikke tømme varsler. Sjekk at Firestore-reglene er publisert (sletting tillatt for din konto).",
+      );
+      setClearModalOpen(false);
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -157,11 +188,26 @@ export default function NavbarNotifications() {
         <div className="navbar-notifications-dropdown" role="dialog" aria-label="Varsler">
           <div className="navbar-notifications-header">
             <span className="navbar-notifications-title">Varsler</span>
-            {unreadCount > 0 ? (
-              <button type="button" className="navbar-notifications-markall" onClick={handleMarkAll}>
-                Merk alle lest
-              </button>
-            ) : null}
+            <div className="navbar-notifications-header-actions">
+              {unreadCount > 0 ? (
+                <button
+                  type="button"
+                  className="navbar-notifications-markall"
+                  onClick={handleMarkAll}
+                >
+                  Merk alle lest
+                </button>
+              ) : null}
+              {items.length > 0 ? (
+                <button
+                  type="button"
+                  className="navbar-notifications-clearall"
+                  onClick={() => setClearModalOpen(true)}
+                >
+                  Tøm liste
+                </button>
+              ) : null}
+            </div>
           </div>
           {items.length === 0 ? (
             <p className="navbar-notifications-empty">Ingen varsler ennå.</p>
@@ -223,6 +269,22 @@ export default function NavbarNotifications() {
           )}
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={clearModalOpen}
+        onClose={() => !clearing && setClearModalOpen(false)}
+        title="Tømme varsler?"
+        confirmLabel="Ja, fjern alle"
+        cancelLabel="Avbryt"
+        variant="danger"
+        confirmBusy={clearing}
+        onConfirm={runClearAll}
+      >
+        <p className="confirm-modal-body-tail">
+          Alle varsler i listen slettes permanent. Nye varsler kan fortsatt komme
+          senere.
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

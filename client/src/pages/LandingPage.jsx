@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import { BRAND_NAME, BRAND_TAGLINE } from "../config/brand";
 import { MAGAZINE_NAME, MAGAZINE_PATH } from "../config/magazine";
+import { useAuth } from "../context/AuthContext";
 import "../styles/LandingPage.css";
 
 function LandingPage() {
+  const { currentUser } = useAuth();
+
   return (
     <div className="landing-page">
       <section className="hero">
@@ -151,7 +154,7 @@ function LandingPage() {
               <h4>Produkt</h4>
               <Link to="/jobs">Ledige stillinger</Link>
               <Link to={MAGAZINE_PATH}>{MAGAZINE_NAME}</Link>
-              <Link to="/priser">Priser</Link>
+              {currentUser ? <Link to="/priser">Priser</Link> : null}
               <Link to="/register">Registrering</Link>
               <Link to="/login">Logg inn</Link>
             </div>
@@ -163,10 +166,12 @@ function LandingPage() {
         </div>
         <div className="footer-bottom">
           <p>© {new Date().getFullYear()} {BRAND_NAME}</p>
-          <p className="ai-credit">
-            Privatpersoner: lokale maler. Bedrifter: sky-AI mot betaling
-            – ingen gratis prøveperioder.
-          </p>
+          {currentUser ? (
+            <p className="ai-credit">
+              Privatpersoner: lokale maler. Bedrifter: sky-AI mot betaling
+              – ingen gratis prøveperioder.
+            </p>
+          ) : null}
         </div>
       </footer>
     </div>

@@ -33,7 +33,16 @@ export async function postAi(currentUser, action, payload) {
     throw err;
   }
   if (!res.ok) {
-    const err = new Error(data.error || data.message || 'AI-kall feilet');
+    let msg = data.error || data.message || 'AI-kall feilet';
+    if (
+      res.status === 503 &&
+      typeof msg === 'string' &&
+      msg.includes('Firebase Admin')
+    ) {
+      msg =
+        'Node-serveren mangler Firebase Admin-nøkkel. Legg firebase-admin-key.json i server-mappen (se server/.env.example), start server på nytt.';
+    }
+    const err = new Error(msg);
     err.status = res.status;
     throw err;
   }

@@ -1222,6 +1222,8 @@ a.application-company-link:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  position: relative;
+  z-index: 2;
 }
 
 .template-generate-btn {

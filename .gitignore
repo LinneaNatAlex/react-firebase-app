@@ -1,3 +1,8 @@
+# Python (lokal AI-tjeneste)
+ai-service/.venv/
+ai-service/__pycache__/
+*.pyc
+
 # Dependencies
 node_modules/
 .pnp
@@ -35,4 +40,6 @@ ui-debug.log
 
 # Service account keys (IMPORTANT: Never commit these!)
 *-service-account*.json
+*firebase-adminsdk*.json
+firebase-admin-key.json
 serviceAccountKey.json

@@ -6,6 +6,7 @@
 
 import {
   collection,
+  collectionGroup,
   query,
   where,
   getDocs,
@@ -74,6 +75,22 @@ export async function purgeUserAccountData(db, uid, userType) {
     await deleteSubcollectionDocs(db, "users", uid, "notifications");
   } catch (e) {
     console.warn("purge notifications", e);
+  }
+
+  try {
+    await deleteSubcollectionDocs(db, "users", uid, "writtenReferences");
+  } catch (e) {
+    console.warn("purge writtenReferences as subject", e);
+  }
+
+  try {
+    const wq = query(
+      collectionGroup(db, "writtenReferences"),
+      where("authorUid", "==", uid),
+    );
+    await deleteQueryDocs(db, wq);
+  } catch (e) {
+    console.warn("purge writtenReferences as author", e);
   }
 
   try {

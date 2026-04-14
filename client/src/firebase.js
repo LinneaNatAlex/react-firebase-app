@@ -25,7 +25,8 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
-// Google innlogging
+// Google innlogging (velg konto eksplisitt hvis flere Google-kontoer)
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 export default app;

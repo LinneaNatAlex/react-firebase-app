@@ -2,12 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
-import {
-  getAiQuotaStatus,
-  handleAiAction,
-  resolveLlmConfig,
-} from './aiHandler.js';
+import { getAiQuotaStatus } from './aiHandler.js';
 import { buildRagContextForAction, getEmbeddingsApiKey } from './rag.js';
+import { jobPostingViaPython, rankApplicantsViaPython } from './pythonAi.js';
+import { loadServiceAccount } from './loadServiceAccount.js';
 
 dotenv.config();
 
@@ -18,10 +16,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Firebase Admin SDK
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  : null;
+// Initialize Firebase Admin SDK (fil: FIREBASE_SERVICE_ACCOUNT_PATH, eller JSON-streng i FIREBASE_SERVICE_ACCOUNT)
+const serviceAccount = loadServiceAccount();
 
 if (serviceAccount) {
   admin.initializeApp({
@@ -32,10 +28,6 @@ if (serviceAccount) {
 }
 
 const db = serviceAccount ? admin.firestore() : null;
-
-function getLlmConfig() {
-  return resolveLlmConfig();
-}
 
 async function requireUser(req, res, next) {
   if (!serviceAccount) {
@@ -84,15 +76,15 @@ async function requireCompanyForAi(req, res, next) {
 
 const COMPANY_AI_ACTIONS = ['jobPosting', 'rankApplicants'];
 
-// AI: bedrift med aiPass + LLM; valgfri RAG (embeddings) fra utlyste stillinger + stillingsbibliotek ved jobPosting
+// AI: bedrift med aiPass; all modell-logikk går via PYTHON_AI_URL (Python).
 app.get('/api/ai/status', requireUser, requireCompanyForAi, async (req, res) => {
   try {
     const status = await getAiQuotaStatus(db, req.uid);
-    const llm = getLlmConfig();
+    const pythonAiUrl = (process.env.PYTHON_AI_URL || '').trim();
     res.json({
       ...status,
       role: 'company',
-      llmConfigured: Boolean(llm.apiKey && llm.baseUrl),
+      pythonAiConfigured: Boolean(pythonAiUrl),
     });
   } catch (e) {
     console.error('ai/status:', e);
@@ -102,14 +94,6 @@ app.get('/api/ai/status', requireUser, requireCompanyForAi, async (req, res) => 
 
 app.post('/api/ai', requireUser, requireCompanyForAi, async (req, res) => {
   try {
-    const llm = getLlmConfig();
-    if (!llm.apiKey || !llm.baseUrl) {
-      return res.status(503).json({
-        error:
-          'LLM er ikke konfigurert. Sett LLM_API_KEY + LLM_BASE_URL (eller GROQ_API_KEY for Groq) på serveren.',
-      });
-    }
-
     const { action, payload } = req.body || {};
     if (!action) {
       return res.status(400).json({ error: 'Mangler action' });
@@ -117,6 +101,14 @@ app.post('/api/ai', requireUser, requireCompanyForAi, async (req, res) => {
 
     if (!COMPANY_AI_ACTIONS.includes(action)) {
       return res.status(400).json({ error: 'Ukjent handling' });
+    }
+
+    const pythonAiUrl = (process.env.PYTHON_AI_URL || '').trim();
+    if (!pythonAiUrl) {
+      return res.status(503).json({
+        error:
+          'Bedrifts-AI er ikke konfigurert. Sett PYTHON_AI_URL til Python-tjenesten (lokal AI, ingen Groq/sky-LLM på Node).',
+      });
     }
 
     const quota = await getAiQuotaStatus(db, req.uid);
@@ -138,7 +130,13 @@ app.post('/api/ai', requireUser, requireCompanyForAi, async (req, res) => {
     });
 
     const mergedPayload = { ...(payload || {}), ragContext };
-    const result = await handleAiAction({ action, payload: mergedPayload }, llm);
+    const secret = (process.env.PYTHON_AI_SECRET || '').trim();
+    let result;
+    if (action === 'rankApplicants') {
+      result = await rankApplicantsViaPython(mergedPayload, pythonAiUrl, secret);
+    } else {
+      result = await jobPostingViaPython(mergedPayload, pythonAiUrl, secret);
+    }
 
     const nextQuota = await getAiQuotaStatus(db, req.uid);
     res.json({ ...result, quota: nextQuota, ragUsed: Boolean(ragContext?.trim()) });

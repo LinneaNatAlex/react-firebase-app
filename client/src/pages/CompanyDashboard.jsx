@@ -37,8 +37,12 @@ function firestoreTsMs(t) {
   return 0;
 }
 
-/** AI-generert stillingstekst er slått av inntil bruk er avtalt/juridisk avklart. */
-const AI_JOB_POSTING_ENABLED = false;
+/** AI-pass fra Firestore (boolean true). Tolerant hvis verdien av en grunn kommer som streng. */
+function companyHasAiPass(userData) {
+  if (!userData || userData.userType !== "company") return false;
+  const p = userData.aiPass;
+  return p === true || p === "true";
+}
 
 function CompanyDashboard() {
   const { currentUser, userData, refreshUserData } = useAuth();
@@ -163,11 +167,11 @@ function CompanyDashboard() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (showNewJobForm) {
-      setReuseSource("");
-      setReuseSearch("");
-    }
-  }, [showNewJobForm]);
+    if (!showNewJobForm) return;
+    setReuseSource("");
+    setReuseSearch("");
+    void refreshUserData();
+  }, [showNewJobForm, refreshUserData]);
 
   // Lagrer ny stilling
   async function handleCreateJob(event) {
@@ -211,10 +215,9 @@ function CompanyDashboard() {
     }
   }
 
-  const aiAccessLabel =
-    userData?.aiPass === true
-      ? "AI: aktiv tilgang (ubegrenset for bedriften)"
-      : "AI: krever kjøpt tilgang – ingen gratis prøveperioder.";
+  const aiAccessLabel = companyHasAiPass(userData)
+    ? "AI: aktiv tilgang (ubegrenset for bedriften)"
+    : "AI: krever kjøpt tilgang – ingen gratis prøveperioder.";
 
   // Stillingsutkast fra skjema – helt lokalt, ingen API
   function handleFillJobTemplate() {
@@ -238,13 +241,7 @@ function CompanyDashboard() {
   }
 
   async function handleAiJobPosting() {
-    if (!AI_JOB_POSTING_ENABLED) {
-      toast.info(
-        "AI-utkast for stillinger er ikke tilgjengelig inntil videre. Bruk mal eller gjenbruk fra egne annonser.",
-      );
-      return;
-    }
-    if (userData?.aiPass !== true) {
+    if (!companyHasAiPass(userData)) {
       setShowAiPaywall(true);
       return;
     }
@@ -276,10 +273,11 @@ function CompanyDashboard() {
       else
         toast.error(
           e.message ||
-            "AI feilet. Sjekk at server kjører med LLM-konfigurasjon (se server/.env.example).",
+            "AI feilet. Sjekk at Python-tjenesten kjører og at PYTHON_AI_URL er satt på serveren.",
         );
+    } finally {
+      setAiJobLoading(false);
     }
-    setAiJobLoading(false);
   }
 
   const allReuseRows = useMemo(() => {
@@ -389,7 +387,7 @@ function CompanyDashboard() {
   }
 
   async function rankApplicantsWithAi(job) {
-    if (userData?.aiPass !== true) {
+    if (!companyHasAiPass(userData)) {
       setShowAiPaywall(true);
       return;
     }
@@ -962,6 +960,51 @@ function CompanyDashboard() {
                   />
                 </div>
 
+                <div className="form-group reuse-previous-block">
+                  <label htmlFor="reuse-search">Gjenbruk egen tekst</label>
+                  <input
+                    id="reuse-search"
+                    type="search"
+                    className="reuse-search-input"
+                    placeholder="Søk i tittel eller tekst…"
+                    value={reuseSearch}
+                    onChange={(e) => setReuseSearch(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <div className="reuse-previous-actions">
+                    <select
+                      id="reuse-job-select"
+                      value={reuseSource}
+                      onChange={(e) => setReuseSource(e.target.value)}
+                      className="reuse-source-select"
+                    >
+                      <option value="">
+                        Velg utlyst stilling eller bibliotektekst…
+                      </option>
+                      {reuseRowsForSelect.map((r) => (
+                        <option key={r.key} value={r.key}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="button secondary reuse-previous-insert"
+                      onClick={() => void handleReuseJobDescription()}
+                      disabled={!reuseSource}
+                    >
+                      Lim inn tekst
+                    </button>
+                  </div>
+                  <p className="template-hint">
+                    Nyeste først. «Bibliotek» er tekster du lagrer under{" "}
+                    <strong>Stillingsbibliotek</strong> (eller kopi fra utlyst
+                    stilling). Ved AI-utkast kan serveren bruke utdrag herfra som
+                    stilinspirasjon (RAG) hvis embeddings er konfigurert på
+                    serveren.
+                  </p>
+                </div>
+
                 <div className="form-group">
                   <div className="description-header">
                     <label>Beskrivelse *</label>
@@ -975,58 +1018,18 @@ function CompanyDashboard() {
                       </button>
                       <button
                         type="button"
-                        className="template-generate-btn template-generate-btn--disabled"
-                        onClick={handleAiJobPosting}
-                        disabled={!AI_JOB_POSTING_ENABLED || aiJobLoading}
-                        title="AI-utkast er ikke tilgjengelig inntil videre (krever avklaring om bruk)."
+                        className={
+                          aiJobLoading
+                            ? "template-generate-btn template-generate-btn--disabled"
+                            : "template-generate-btn"
+                        }
+                        onClick={() => void handleAiJobPosting()}
+                        disabled={aiJobLoading}
+                        title="Lager utkast via lokal Python (mal). Krever AI-tilgang på bedriftskonto og kjørende backend."
                       >
                         {aiJobLoading ? "AI…" : "AI-utkast"}
                       </button>
                     </div>
-                  </div>
-                  <div className="form-group reuse-previous-block">
-                    <label htmlFor="reuse-search">Gjenbruk egen tekst</label>
-                    <input
-                      id="reuse-search"
-                      type="search"
-                      className="reuse-search-input"
-                      placeholder="Søk i tittel eller tekst…"
-                      value={reuseSearch}
-                      onChange={(e) => setReuseSearch(e.target.value)}
-                      autoComplete="off"
-                    />
-                    <div className="reuse-previous-actions">
-                      <select
-                        id="reuse-job-select"
-                        value={reuseSource}
-                        onChange={(e) => setReuseSource(e.target.value)}
-                        className="reuse-source-select"
-                      >
-                        <option value="">
-                          Velg utlyst stilling eller bibliotektekst…
-                        </option>
-                        {reuseRowsForSelect.map((r) => (
-                          <option key={r.key} value={r.key}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="button secondary reuse-previous-insert"
-                        onClick={() => void handleReuseJobDescription()}
-                        disabled={!reuseSource}
-                      >
-                        Lim inn tekst
-                      </button>
-                    </div>
-                    <p className="template-hint">
-                      Nyeste først. «Bibliotek» er tekster du lagrer under{" "}
-                      <strong>Stillingsbibliotek</strong> (eller kopi fra utlyst
-                      stilling). Det er ikke AI. Når AI-utkast aktiveres igjen,
-                      kan serveren hente utdrag herfra til LLM (embeddings/RAG)
-                      hvis konfigurert.
-                    </p>
                   </div>
                   {aiError && <p className="ai-error">{aiError}</p>}
                   <p className="template-hint">
@@ -1036,8 +1039,8 @@ function CompanyDashboard() {
                     (Om bedriften).
                   </p>
                   <p className="template-hint">
-                    <strong>AI-utkast:</strong> ikke tilgjengelig inntil videre.
-                    AI til søkervurdering (egnede kontoer) er uendret.
+                    <strong>AI-utkast:</strong> krever AI-tilgang på kontoen.
+                    Tekst bygges lokalt i Python (strukturert mal – ingen Groq/sky-LLM).
                   </p>
                   <textarea
                     value={newJob.description}
