@@ -80,7 +80,8 @@ html[data-theme="dark"] .applicant-count.has-applicants {
 
 html[data-theme="dark"] .sidebar-account-card,
 html[data-theme="dark"] .sidebar-label,
-html[data-theme="dark"] .sidebar-user-name--header {
+html[data-theme="dark"] .sidebar-user-name--header,
+html[data-theme="dark"] .sidebar-user-name {
   border-color: var(--color-border);
   color: var(--color-text);
 }

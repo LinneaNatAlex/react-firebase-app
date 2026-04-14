@@ -55,7 +55,7 @@
   text-align: center;
   padding-bottom: 1.25rem;
   margin-bottom: 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* Skjules på desktop – vises via media query på mobil */
@@ -66,7 +66,7 @@
 .sidebar-profile-header {
   padding-bottom: 1.25rem;
   margin-bottom: 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .sidebar-profile-banner {
@@ -371,7 +371,7 @@
 
 .sidebar-user-name {
   font-size: 1.25rem;
-  color: #111827;
+  color: var(--color-text);
   word-break: break-word;
   margin: 0;
 }
@@ -404,7 +404,7 @@
     rgba(230, 239, 233, 0.55) 0%,
     #fff 48%
   );
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 1.1rem 1.35rem 1.25rem;
   margin-bottom: 1.5rem;
@@ -417,14 +417,14 @@
 
 .dashboard-friend-requests-title {
   font-size: 1.1rem;
-  color: #111827;
+  color: var(--color-text);
   margin: 0 0 0.25rem;
 }
 
 .dashboard-friend-requests-lead {
   margin: 0;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--color-muted);
 }
 
 .dashboard-friend-requests-list {
@@ -443,8 +443,8 @@
   justify-content: space-between;
   gap: 0.65rem;
   padding: 0.65rem 0.75rem;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 
@@ -481,15 +481,15 @@
 .nav-item {
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--color-muted);
   text-decoration: none;
   transition: all 0.2s;
   font-weight: 500;
 }
 
 .nav-item:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--color-tint-strong, var(--color-tint));
+  color: var(--color-text);
 }
 
 .nav-item.active {
@@ -513,16 +513,17 @@
 
 .dashboard-header h1 {
   font-size: 1.75rem;
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 0.25rem;
 }
 
 .dashboard-header p {
-  color: #6b7280;
+  color: var(--color-muted);
 }
 
 .dashboard-content {
-  background: white;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -531,7 +532,7 @@
 
 .section-title {
   font-size: 1.25rem;
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 1.5rem;
 }
 
@@ -882,7 +883,7 @@
   gap: 1rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .detail-avatar {
@@ -919,7 +920,7 @@
 }
 
 .detail-section p {
-  color: #374151;
+  color: var(--color-text);
   line-height: 1.6;
 }
 
@@ -934,7 +935,7 @@
 
 .detail-section .cv-prose p {
   margin: 0 0 0.65rem;
-  color: #374151;
+  color: var(--color-text);
   line-height: 1.7;
   font-size: 0.95rem;
   text-wrap: pretty;
@@ -970,7 +971,7 @@
 }
 
 .cover-letter-text {
-  background: #f9fafb;
+  background: var(--color-surface);
   padding: 1rem;
   border-radius: 8px;
 }
