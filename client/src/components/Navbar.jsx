@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { BRAND_NAME } from "../config/brand";
+import { BRAND_NAME, BRAND_TAGLINE } from "../config/brand";
 import { MAGAZINE_NAME, MAGAZINE_PATH } from "../config/magazine";
 import NavbarSearch from "./NavbarSearch";
 import NavbarNotifications from "./NavbarNotifications";
@@ -79,6 +79,7 @@ function Navbar() {
         <Link to="/" onClick={() => setMobileMenuOpen(false)}>
           {BRAND_NAME}
         </Link>
+        <span className="navbar-tagline">{BRAND_TAGLINE}</span>
       </div>
 
       <NavbarSearch />

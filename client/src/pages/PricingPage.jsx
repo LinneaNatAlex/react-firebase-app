@@ -6,8 +6,8 @@ import { BRAND_NAME } from "../config/brand";
 import "../styles/PricingPage.css";
 
 /** Anbefalt månedspris for ubegrenset bedrifts-AI (juster etter marked) */
-const RECOMMENDED_MONTHLY_NOK = 599;
-const STARTER_MONTHLY_NOK = 399;
+const RECOMMENDED_MONTHLY_NOK = 449;
+const STARTER_MONTHLY_NOK = 249;
 const STARTER_CALLS_PER_MONTH = 10;
 
 export default function PricingPage() {
@@ -26,7 +26,9 @@ export default function PricingPage() {
         <h1>Priser</h1>
         <p className="lead">
           Her ser du både privat- og bedriftspriser. Du kan lese alt uansett
-          konto — men du må være riktig kontotype for å kjøpe.
+          konto — men du må være riktig kontotype for å kjøpe. For små team som
+          ansetter juniorer og nyutdannede gir malene og valgfri AI støtte uten
+          at dere trenger et stort HR-apparat.
         </p>
       </div>
 
