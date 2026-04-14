@@ -370,9 +370,15 @@ function PersonPublicProfilePage() {
               {isOwnProfile ? (
                 <Link
                   to={`/profil/${userId}/cv#referanser`}
-                  className="person-public-cv-cta person-public-cv-cta--secondary"
+                  className="person-public-cv-cta person-public-cv-cta--secondary person-public-cv-cta--ref-request"
+                  title="Be om skriftlig referanse"
                 >
-                  Be om skriftlig referanse →
+                  <span className="person-public-cv-cta-label person-public-cv-cta-label--full">
+                    Be om skriftlig referanse →
+                  </span>
+                  <span className="person-public-cv-cta-label person-public-cv-cta-label--short">
+                    Få referanse →
+                  </span>
                 </Link>
               ) : null}
               {currentUser && !isOwnProfile && userData?.userType === 'company' && profileIsJobseeker ? (

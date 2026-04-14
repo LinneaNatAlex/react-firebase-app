@@ -978,6 +978,41 @@ html.person-public-hide-scrollbar::-webkit-scrollbar {
   gap: 0.5rem;
 }
 
+.person-public-cv-cta--ref-request .person-public-cv-cta-label--short {
+  display: none;
+}
+
+.person-public-cv-cta--ref-request .person-public-cv-cta-label--full {
+  display: inline;
+}
+
+/* Mobil: stable knapper i full bredde (unngå smal kolonne ved siden av profilbilde) */
+@media (max-width: 479px) {
+  .person-public-cv-row--split {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .person-public-cv-row--split .person-public-cv-cta {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    font-size: 0.875rem;
+    line-height: 1.25;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .person-public-cv-cta--ref-request .person-public-cv-cta-label--full {
+    display: none;
+  }
+
+  .person-public-cv-cta--ref-request .person-public-cv-cta-label--short {
+    display: inline;
+  }
+}
+
 /* Én linje på tablet/desktop når det er plass (unngå stablet CV + melding) */
 @media (min-width: 480px) {
   .person-public-cv-row--split {
@@ -1339,30 +1374,26 @@ html.person-public-hide-scrollbar::-webkit-scrollbar {
  */
 .person-public-body-text--prose {
   white-space: normal;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
 }
 
 .person-public-body-text--prose p {
-  margin: 0 0 1rem;
+  margin: 0;
   max-width: 42em;
   font-size: 1.05rem;
   line-height: 1.75;
   color: var(--color-text);
+  text-align: start;
   text-wrap: pretty;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: normal;
   hyphens: auto;
   -webkit-hyphens: auto;
-  orphans: 2;
-  widows: 2;
-}
-
-@media (min-width: 641px) {
-  .person-public-body-text--prose p {
-    text-align: justify;
-    text-justify: inter-word;
-    text-align-last: start;
-  }
+  orphans: 3;
+  widows: 3;
 }
 
 .person-public-body-text--prose p:last-child {
@@ -1374,10 +1405,16 @@ html.person-public-hide-scrollbar::-webkit-scrollbar {
 }
 
 @media (max-width: 640px) {
+  .person-public-body-text--prose {
+    gap: 1rem;
+  }
+
   .person-public-body-text--prose p {
-    font-size: 1rem;
-    line-height: 1.72;
     max-width: none;
+    font-size: 0.98rem;
+    line-height: 1.78;
+    letter-spacing: 0.01em;
+    text-wrap: pretty;
   }
 }
 
