@@ -25,7 +25,6 @@ import {
   listAllCompanyFollowingCompanies,
 } from "../services/social";
 import PublicListModal from "../components/PublicListModal";
-import KeyEditIcon from "../components/icons/KeyEditIcon";
 import "../styles/CompanyProfilePage.css";
 
 function CompanyPublicProfilePage() {
@@ -276,10 +275,6 @@ function CompanyPublicProfilePage() {
         </Link>
         {isOwnCompany ? (
           <nav className="public-profile-topbar-actions" aria-label="Rediger bedriftsprofil">
-            <span className="public-profile-topbar-edit-leading">
-              <KeyEditIcon className="public-profile-topbar-key-icon" />
-              <span className="public-profile-topbar-edit-caption">Rediger</span>
-            </span>
             <Link
               to="/dashboard/company/profil"
               className="public-profile-topbar-action"

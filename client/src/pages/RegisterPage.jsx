@@ -8,6 +8,7 @@ import {
   buildCompanySearchNameLower,
   buildUserSearchNameLower,
 } from "../utils/searchName";
+import { messageForGoogleAuthError } from "../utils/googleAuthErrors";
 import "../styles/Auth.css";
 
 function RegisterPage() {
@@ -61,11 +62,7 @@ function RegisterPage() {
       // Ny bruker - siden viser automatisk brukertype-valg
     } catch (error) {
       console.error("Google registrering feilet:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        setError("Registrering avbrutt");
-      } else {
-        setError("Kunne ikke registrere med Google. Prøv igjen.");
-      }
+      setError(messageForGoogleAuthError(error));
     }
     setLoading(false);
   }
@@ -201,10 +198,10 @@ function RegisterPage() {
                 B
               </span>
               <h3>Bedrift</h3>
-              <p>Jeg vil rekruttere ansatte</p>
+              <p>For team som vil bygge med studenter, nyutdannede og andre</p>
               <ul>
                 <li>Publiser stillingsannonser</li>
-                <li>AI-rangering av søkere</li>
+                <li>Valgfri rangering og oversikt over søkere</li>
                 <li>Administrer rekruttering</li>
               </ul>
             </button>
@@ -222,7 +219,10 @@ function RegisterPage() {
                 P
               </span>
               <h3>Privatperson</h3>
-              <p>Personlig konto – også om du allerede er i jobb</p>
+              <p>
+                Student, nyutdannet eller bytter jobb — ingen studentbevis
+                kreves
+              </p>
               <ul>
                 <li>CV og profil på ett sted</li>
                 <li>Søk på utlyste stillinger</li>

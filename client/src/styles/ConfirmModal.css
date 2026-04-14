@@ -35,6 +35,14 @@
   margin-bottom: 1.25rem;
 }
 
+.confirm-modal-body p {
+  margin: 0;
+}
+
+.confirm-modal-body p + p {
+  margin-top: 0.65rem;
+}
+
 .confirm-modal-body .confirm-modal-body-tail {
   margin-bottom: 0;
   margin-top: 0.65rem;
@@ -49,6 +57,39 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.6rem;
+}
+
+/* Grunnstiler (ConfirmModal brukes uten MagazineEditorPage.css) */
+.confirm-modal-actions .magazine-editor-btn {
+  padding: 0.5rem 1.05rem;
+  border-radius: var(--radius-md, 10px);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #fff);
+  color: var(--color-text);
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    filter 0.15s ease;
+}
+
+.confirm-modal-actions .magazine-editor-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.confirm-modal-actions .magazine-editor-btn.secondary {
+  background: var(--color-bg, #f4f1eb);
+  color: var(--color-text);
+  border-color: var(--color-border, #e5e7eb);
+}
+
+.confirm-modal-actions .magazine-editor-btn.secondary:hover:not(:disabled) {
+  background: var(--color-tint, #e6efe9);
+  border-color: var(--color-tint-strong, #cfded6);
 }
 
 .confirm-modal-actions .magazine-editor-btn.danger-solid {

@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Gjør dev-server tilgjengelig på alle lokale grensesnitt (hjelper localhost vs 127.0.0.1 i noen webviews)
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

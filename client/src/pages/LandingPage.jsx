@@ -9,11 +9,13 @@ function LandingPage() {
       <section className="hero">
         <div className="hero-content">
           <p className="hero-eyebrow">{BRAND_TAGLINE}</p>
-          <h1>Rekruttering uten unødig styr</h1>
+          <h1>Første jobb og tidlig karriere — uten å drukne blant de mest erfarne</h1>
           <p className="hero-subtitle">
-            Samle annonser, søknader og CV på ett sted. Du velger selv hvor mye
-            du vil bruke verktøyene, inkludert valgfri hjelp til tekst når du
-            trenger det.
+            Sprang er bygget for studenter, nyutdannede og bedrifter som vil
+            bygge med unge talenter. Samle annonser, søknader og CV på ett sted,
+            med valgfri hjelp til tekst når du trenger det. Du trenger ikke
+            være student for å være med — alle som søker jobb eller ansetter er
+            velkomne.
           </p>
           <div className="hero-buttons">
             <Link to="/register" className="button primary large">
@@ -34,12 +36,16 @@ function LandingPage() {
       <section className="pillars">
         <div className="pillar">
           <span className="pillar-label">For bedrifter</span>
-          <p>Publiser stilling, få oversikt over søkere og status underveis.</p>
+          <p>
+            Rekrutter traineer, praksis, nyutdannede og andre roller — med
+            oversikt over søkere og status underveis.
+          </p>
         </div>
         <div className="pillar">
-          <span className="pillar-label">For privatpersoner</span>
+          <span className="pillar-label">For studenter og tidlig karriere</span>
           <p>
-            CV, søknadstekst og søknader samlet. Du ser svar og meldinger her.
+            CV, søknad og søknader samlet. Et alternativ der feed og søk ikke
+            bare speiler de med lengst erfaring.
           </p>
         </div>
         <div className="pillar">
@@ -51,7 +57,8 @@ function LandingPage() {
       <section className="features">
         <h2>Det du faktisk får</h2>
         <p className="features-lead">
-          Ikke bare én knapp som lover alt, men konkrete deler av flyten.
+          Konkrete deler av flyten — ikke bare «én plattform» der erfarne
+          profiler ofte dominerer søket.
         </p>
         <div className="features-grid">
           <article className="feature-card">
@@ -94,11 +101,15 @@ function LandingPage() {
 
       <section className="for-whom">
         <h2>Hvem passer det for?</h2>
+        <p className="for-whom-intro">
+          Naturlig for studenter og tidlig karriere — og for bedrifter som vil
+          nå dem. Andre kandidater og arbeidsgivere er like velkomne.
+        </p>
         <div className="for-whom-grid">
           <div className="for-whom-card">
             <h3>Bedrifter</h3>
             <ul>
-              <li>Enkel publisering av stillinger</li>
+              <li>Publiser stillinger som treffer juniorer og nyutdannede</li>
               <li>Liste over søkere og detaljer</li>
               <li>Status og melding til kandidater</li>
             </ul>
@@ -111,7 +122,7 @@ function LandingPage() {
             <h3>Privatpersoner</h3>
             <ul>
               <li>Profil og CV-tekst på ett sted</li>
-              <li>Søk på utlyste stillinger når du vil</li>
+              <li>Søk på utlyste stillinger — også uten studentbevis</li>
               <li>Se status og beskjeder fra arbeidsgivere</li>
             </ul>
             <Link to="/register?type=person" className="button secondary">
@@ -133,7 +144,7 @@ function LandingPage() {
         <div className="footer-content">
           <div className="footer-brand">
             <h3>{BRAND_NAME}</h3>
-            <p>Jobb og søknad på ett sted.</p>
+            <p>{BRAND_TAGLINE}</p>
           </div>
           <div className="footer-links">
             <div className="footer-column">

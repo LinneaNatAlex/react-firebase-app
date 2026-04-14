@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
 import "../styles/Auth.css";
 
 function LoginPage() {
@@ -18,11 +20,14 @@ function LoginPage() {
     try {
       setError("");
       setLoading(true);
-      await login(email, password);
-
-      setTimeout(() => {
-        navigate("/dashboard/company");
-      }, 500);
+      const credential = await login(email, password);
+      const userSnap = await getDoc(doc(db, "users", credential.user.uid));
+      const userType = userSnap.exists() ? userSnap.data().userType : null;
+      navigate(
+        userType === "company"
+          ? "/dashboard/company"
+          : "/dashboard/user",
+      );
     } catch (error) {
       console.error("Innloggingsfeil:", error);
 
@@ -37,9 +42,9 @@ function LoginPage() {
       } else {
         setError("Kunne ikke logge inn. Sjekk e-post og passord.");
       }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   // Google-innlogging

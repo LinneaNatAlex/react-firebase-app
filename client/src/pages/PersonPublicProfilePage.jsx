@@ -21,7 +21,6 @@ import {
   unfollowCompanyAsUser,
 } from '../services/social';
 import PublicListModal from '../components/PublicListModal';
-import KeyEditIcon from '../components/icons/KeyEditIcon';
 import '../styles/CompanyProfilePage.css';
 
 function PersonPublicProfilePage() {
@@ -305,10 +304,6 @@ function PersonPublicProfilePage() {
         </Link>
         {isOwnProfile ? (
           <nav className="public-profile-topbar-actions" aria-label="Rediger profil">
-            <span className="public-profile-topbar-edit-leading">
-              <KeyEditIcon className="public-profile-topbar-key-icon" />
-              <span className="public-profile-topbar-edit-caption">Rediger</span>
-            </span>
             <Link
               to="/dashboard/user?tab=public-profile"
               className="public-profile-topbar-action"

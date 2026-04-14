@@ -100,10 +100,12 @@ function CompanyDashboard() {
       let appsList = [];
 
       if (jobIds.length > 0) {
-        // Hent alle søknader fra databasen
-        const allAppsSnapshot = await getDocs(collection(db, "applications"));
+        const appsQuery = query(
+          collection(db, "applications"),
+          where("companyId", "==", currentUser.uid),
+        );
+        const allAppsSnapshot = await getDocs(appsQuery);
 
-        // Filtrer søknader som matcher våre stillinger
         const relevantApps = allAppsSnapshot.docs.filter((doc) => {
           const data = doc.data();
           return (
@@ -578,7 +580,7 @@ function CompanyDashboard() {
               setMobileNavOpen(false);
             }}
           >
-            Varsler
+            Varslingsinnstillinger
           </button>
           <p className="sidebar-label sidebar-label--spaced">Profil</p>
           <Link className="nav-item" to="/dashboard/company/profil">

@@ -252,8 +252,17 @@
   text-align: center;
   font-size: clamp(1.65rem, 3vw, 2rem);
   font-weight: 600;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
   color: var(--color-text);
+}
+
+.for-whom-intro {
+  text-align: center;
+  max-width: 40rem;
+  margin: 0 auto 2rem;
+  color: var(--color-muted);
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
 .for-whom-grid {
@@ -265,6 +274,9 @@
 }
 
 .for-whom-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   background: var(--color-surface);
   padding: 2rem;
   border-radius: var(--radius-md);
@@ -282,7 +294,15 @@
 .for-whom-card ul {
   list-style: none;
   padding: 0;
-  margin-bottom: 1.5rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.for-whom-card > a {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  align-self: stretch;
+  text-align: center;
 }
 
 .for-whom-card li {

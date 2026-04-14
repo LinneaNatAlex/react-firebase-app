@@ -12,8 +12,10 @@ import UserNetworkPanel from '../components/UserNetworkPanel';
 import IncomingFriendRequestsPanel from '../components/IncomingFriendRequestsPanel';
 import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
 import JobseekerCoverLetterLibraryPanel from '../components/JobseekerCoverLetterLibraryPanel';
+import ConfirmModal from '../components/ConfirmModal';
 import { fetchCoverLettersFromApplications } from '../services/jobseekerCoverLetters';
 import '../styles/Dashboard.css';
+import '../styles/ConfirmModal.css';
 
 const dismissedMessagesStorageKey = (uid) => `jobportal-dismissed-company-messages:${uid}`;
 
@@ -48,6 +50,8 @@ function UserDashboard() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [dismissedMessageAppIds, setDismissedMessageAppIds] = useState(() => new Set());
+  const [withdrawConfirmAppId, setWithdrawConfirmAppId] = useState(null);
+  const [withdrawBusy, setWithdrawBusy] = useState(false);
   const fileInputRef = useRef(null);
   const coverInputRef = useRef(null);
   const photoMenuRef = useRef(null);
@@ -310,20 +314,23 @@ function UserDashboard() {
     }
   }
 
-  // Trekk tilbake søknad
-  async function withdrawApplication(applicationId) {
-    if (!window.confirm('Er du sikker på at du vil trekke denne søknaden? Dette kan ikke angres.')) {
-      return;
-    }
+  function openWithdrawConfirm(applicationId) {
+    setWithdrawConfirmAppId(applicationId);
+  }
 
+  async function confirmWithdrawApplication() {
+    if (!withdrawConfirmAppId) return;
+    setWithdrawBusy(true);
     try {
-      await deleteDoc(doc(db, 'applications', applicationId));
-      // Oppdater lokal state
-      setApplications(applications.filter(app => app.id !== applicationId));
+      await deleteDoc(doc(db, 'applications', withdrawConfirmAppId));
+      setApplications((prev) => prev.filter((app) => app.id !== withdrawConfirmAppId));
       toast.success('Søknad trukket tilbake');
+      setWithdrawConfirmAppId(null);
     } catch (error) {
       console.error('Feil ved tilbaketrekking:', error);
       toast.error('Kunne ikke trekke søknaden. Prøv igjen.');
+    } finally {
+      setWithdrawBusy(false);
     }
   }
 
@@ -546,7 +553,7 @@ function UserDashboard() {
                 setMobileNavOpen(false);
               }}
             >
-              Varsler
+              Varslingsinnstillinger
             </button>
           </div>
 
@@ -709,7 +716,7 @@ function UserDashboard() {
                           {canWithdraw && (
                             <button 
                               className="withdraw-btn"
-                              onClick={() => withdrawApplication(application.id)}
+                              onClick={() => openWithdrawConfirm(application.id)}
                             >
                               Trekk søknad
                             </button>
@@ -947,6 +954,24 @@ function UserDashboard() {
           </div>
         )}
       </main>
+
+      <ConfirmModal
+        open={withdrawConfirmAppId !== null}
+        title="Trekke søknaden?"
+        confirmLabel="Ja, trekk søknaden"
+        cancelLabel="Avbryt"
+        variant="danger"
+        confirmBusy={withdrawBusy}
+        onClose={() => {
+          if (!withdrawBusy) setWithdrawConfirmAppId(null);
+        }}
+        onConfirm={confirmWithdrawApplication}
+      >
+        <p>
+          Er du sikker på at du vil trekke denne søknaden? Bedriften vil ikke lenger se den, og
+          handlingen kan ikke angres.
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

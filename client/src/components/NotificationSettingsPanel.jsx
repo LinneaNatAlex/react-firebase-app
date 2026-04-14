@@ -81,7 +81,7 @@ export default function NotificationSettingsPanel() {
   if (loading) {
     return (
       <div className="dashboard-content">
-        <p className="loading-text">Laster innstillinger…</p>
+        <p className="loading-text">Laster varslingsinnstillinger…</p>
       </div>
     );
   }
@@ -90,7 +90,7 @@ export default function NotificationSettingsPanel() {
     <div className="dashboard-content notification-settings-page">
       <header className="dashboard-header">
         <div>
-          <h1>Varsler</h1>
+          <h1>Varslingsinnstillinger</h1>
           <p>
             {isJobseeker ? (
               <>

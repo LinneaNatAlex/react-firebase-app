@@ -283,8 +283,12 @@ function JobsPage() {
       {/* Header med søkefelt */}
       <header className="jobs-header">
         <div className="jobs-header-content">
-          <h1>Finn din drømmejobb</h1>
-          <p>Utforsk ledige stillinger fra topp bedrifter</p>
+          <h1>Ledige muligheter</h1>
+          <p>
+            Stillinger fra bedrifter på Sprang — mange passer studenter,
+            praksis, trainee eller første jobb. Alle kan søke; ingen krav om
+            studentstatus.
+          </p>
           
           <div className="search-container">
             <div className="search-box">
