@@ -5,7 +5,8 @@
  * erstatter \n med mellomrom, får vi «ord- resten». Derfor normaliseres «-\n» først.
  *
  * Hvor det brukes:
- * - splitProfileIntroParagraphs → «Om meg», sammendrag, korte felt (enkelt linjeskift → mellomrom)
+ * - splitProfileIntroParagraphs → «Om meg», sammendrag, korte felt (enkelt linjeskift → mellomrom;
+ *   kun \n\n+ gir nytt avsnitt — unngår smale «hard-wrap»-kolonner)
  * - splitCvMultilineParagraphs → erfaring, utdanning, ferdigheter, søknadstekst (linjeskift beholdes)
  * - normalizeCvHyphens → kommaseparert liste (bedrift: ferdighet-tags) uten å endre strukturen
  *
@@ -13,23 +14,51 @@
  * bedrift modal: `.cv-prose` i Dashboard.css.
  */
 
+/** Privat tegn for midlertidig avsnittsgrense (Private Use Area — skal ikke forekomme i brukertekst). */
+const PARA_BREAK = "\uE000";
+
 /**
- * Ett tekstblokk (mellom tomme linjer): fjern orddeling med bindestrek, deretter fløt ut
- * enkelt linjeskift til mellomrom slik at avsnittet kan brytes naturlig i nettleseren.
+ * Tekst limt inn fra nettsider/Word inneholder ofte &amp; osv. React viser det bokstavelig i {text}.
+ * Dekoder vanlige entiteter til tegn — ikke HTML-parsing (trygt som tekstinnhold).
  */
-function normalizeIntroBlock(block) {
-  return block
-    .replace(/-\s*\n\s*/g, "")
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+export function decodeHtmlEntitiesForDisplay(text) {
+  if (text == null || text === "") return "";
+  let s = String(text);
+  s = s.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+  s = s.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  for (let i = 0; i < 8; i += 1) {
+    const next = s.replace(/&amp;/gi, "&");
+    if (next === s) break;
+    s = next;
+  }
+  return s
+    .replace(/&nbsp;/gi, "\u00A0")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
 }
 
-/** Sammenhengende prose: tom linje = nytt <p>. Passer sammendrag, «Om meg», ønsket stilling. */
+/**
+ * Sammenhengende prose: kun «ekte» tomme linjer (\n\n+) gir nytt <p>.
+ * Enkelt linjeskift (mange bruker det som hard linjebryting) fløtes ut til mellomrom
+ * slik at teksten kan bruke full bredde og brytes av nettleseren.
+ *
+ * Rekkefølge: bindestrek+linjeskift → fjern; \n\n+ → plassholder; gjenværende \n → mellomrom.
+ */
 export function splitProfileIntroParagraphs(raw) {
-  const t = String(raw ?? "").replace(/\r\n/g, "\n").trim();
+  const t = String(raw ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\uE000/g, " ")
+    .trim();
   if (!t) return [];
-  return t.split(/\n{2,}/).map(normalizeIntroBlock).filter(Boolean);
+  const hyphenFixed = t.replace(/-\s*\n\s*/g, "");
+  const withParaMarkers = hyphenFixed.replace(/\n{2,}/g, PARA_BREAK);
+  const flattened = withParaMarkers.replace(/\n/g, " ");
+  return flattened
+    .split(PARA_BREAK)
+    .map((block) => decodeHtmlEntitiesForDisplay(block.replace(/\s+/g, " ").trim()))
+    .filter(Boolean);
 }
 
 /**
@@ -41,7 +70,9 @@ export function splitCvMultilineParagraphs(raw) {
   if (!t) return [];
   return t
     .split(/\n{2,}/)
-    .map((block) => block.replace(/-\s*\n\s*/g, "").trim())
+    .map((block) =>
+      decodeHtmlEntitiesForDisplay(block.replace(/-\s*\n\s*/g, "").trim()),
+    )
     .filter(Boolean);
 }
 

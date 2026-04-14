@@ -1369,35 +1369,50 @@ html.person-public-hide-scrollbar::-webkit-scrollbar {
 
 /*
  * Offentlig profil + CV-sider (PersonPublicProfilePage, PersonPublicCvPage).
- * Tekst kommer fra utils/splitProfileIntroParagraphs.js (prose vs multiline).
- * lang="nb" på wrapper gir bedre norsk hyphenering i nettleseren.
+ * Tekst kommer fra utils/splitProfileIntroParagraphs.js (prose vs multiline; enkelt \n fløtes ut).
+ * Full bredde i panelet (ingen max-width) — unngår smal kolonne med tom plass til høyre.
+ * hyphens: none — auto-hyphenering gir ofte stygge brudd i blandet norsk/engelsk.
  */
 .person-public-body-text--prose {
   white-space: normal;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .person-public-body-text--prose p {
   margin: 0;
-  max-width: 42em;
+  max-width: none;
+  width: 100%;
   font-size: 1.05rem;
   line-height: 1.75;
   color: var(--color-text);
   text-align: start;
-  text-wrap: pretty;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: normal;
-  hyphens: auto;
-  -webkit-hyphens: auto;
+  hyphens: none;
+  -webkit-hyphens: none;
   orphans: 3;
   widows: 3;
 }
 
 .person-public-body-text--prose p:last-child {
   margin-bottom: 0;
+}
+
+@media (min-width: 641px) {
+  .person-public-body-text--prose p {
+    text-align: justify;
+    text-justify: inter-word;
+    text-align-last: start;
+  }
+
+  .person-public-body-text--prose p.person-public-body-text--multiline {
+    text-align: start;
+  }
 }
 
 .person-public-body-text--prose p.person-public-body-text--multiline {
@@ -1410,11 +1425,9 @@ html.person-public-hide-scrollbar::-webkit-scrollbar {
   }
 
   .person-public-body-text--prose p {
-    max-width: none;
     font-size: 0.98rem;
     line-height: 1.78;
     letter-spacing: 0.01em;
-    text-wrap: pretty;
   }
 }
 

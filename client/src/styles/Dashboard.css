@@ -940,8 +940,8 @@
   text-wrap: pretty;
   overflow-wrap: break-word;
   word-break: normal;
-  hyphens: auto;
-  -webkit-hyphens: auto;
+  hyphens: none;
+  -webkit-hyphens: none;
   orphans: 2;
   widows: 2;
 }
