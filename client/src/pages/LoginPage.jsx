@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import AuthLegalLinks from "../components/AuthLegalLinks";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
@@ -132,6 +133,7 @@ function LoginPage() {
           </button>
         </form>
 
+        <AuthLegalLinks />
         <p className="auth-footer">
           Har du ikke konto? <Link to="/register">Registrer deg</Link>
         </p>

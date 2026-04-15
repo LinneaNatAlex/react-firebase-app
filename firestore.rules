@@ -323,5 +323,11 @@ service cloud.firestore {
         request.resource.data.actorId == request.auth.uid;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Offentlig markedsføringstekst (forside, Om oss, FAQ, footer) — skrives kun av plattformadmin
+    match /siteContent/{docId} {
+      allow read: if true;
+      allow write: if isPlatformAdmin();
+    }
   }
 }

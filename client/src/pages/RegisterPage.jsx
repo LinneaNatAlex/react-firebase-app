@@ -9,6 +9,7 @@ import {
   buildUserSearchNameLower,
 } from "../utils/searchName";
 import { messageForGoogleAuthError } from "../utils/googleAuthErrors";
+import AuthLegalLinks from "../components/AuthLegalLinks";
 import "../styles/Auth.css";
 
 function RegisterPage() {
@@ -267,6 +268,7 @@ function RegisterPage() {
             </>
           )}
 
+          <AuthLegalLinks />
           <p className="auth-footer">
             Har du allerede konto? <Link to="/login">Logg inn</Link>
           </p>
@@ -427,6 +429,7 @@ function RegisterPage() {
           </button>
         </form>
 
+        <AuthLegalLinks />
         <p className="auth-footer">
           Har du allerede konto? <Link to="/login">Logg inn</Link>
         </p>

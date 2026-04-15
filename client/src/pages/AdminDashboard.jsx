@@ -13,6 +13,8 @@ import {
 import { db, auth } from "../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { PLATFORM_ADMIN_EMAIL } from "../config/adminEmail";
+import AdminSiteContentPanel from "../components/AdminSiteContentPanel";
+import AdminAnalyticsPanel from "../components/AdminAnalyticsPanel";
 import "../styles/Dashboard.css";
 
 function AdminDashboard() {
@@ -205,6 +207,24 @@ function AdminDashboard() {
             }}
           >
             Søknader
+          </button>
+          <button
+            className={activeTab === "site-content" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("site-content");
+              setMobileNavOpen(false);
+            }}
+          >
+            Nettsideinnhold
+          </button>
+          <button
+            className={activeTab === "analytics" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("analytics");
+              setMobileNavOpen(false);
+            }}
+          >
+            Analyse
           </button>
 
           <div className="sidebar-divider"></div>
@@ -403,6 +423,10 @@ function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {activeTab === "site-content" && <AdminSiteContentPanel />}
+
+        {activeTab === "analytics" && <AdminAnalyticsPanel />}
 
         {activeTab === "applications" && (
           <div className="dashboard-content">

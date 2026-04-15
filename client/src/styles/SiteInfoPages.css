@@ -1,0 +1,162 @@
+/* Felles layout for Om oss, FAQ, Credits (offentlige infosider) */
+
+.site-info-page {
+  min-height: calc(100vh - 4rem);
+  padding: 2.5rem 1.25rem 3.5rem;
+  background: var(--color-bg);
+}
+
+.site-info-inner {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.site-info-page h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.125rem);
+  color: var(--color-text);
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.site-info-page .site-info-lead {
+  font-size: 1.05rem;
+  color: var(--color-muted);
+  margin-bottom: 1.75rem;
+}
+
+.site-info-page h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin: 2rem 0 0.65rem;
+  color: var(--color-text);
+}
+
+.site-info-page p {
+  margin-bottom: 0.9rem;
+  color: var(--color-text);
+}
+
+.site-info-page ul {
+  margin: 0.5rem 0 1rem 1.15rem;
+  color: var(--color-text);
+}
+
+.site-info-page li {
+  margin-bottom: 0.35rem;
+}
+
+.site-info-values {
+  margin: 0.5rem 0 1.75rem;
+  padding: 1.15rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+}
+
+.site-info-values p {
+  margin-bottom: 0.85rem;
+}
+
+.site-info-values p:last-child {
+  margin-bottom: 0;
+}
+
+/* Juridiske sider (HTML fra CMS) */
+.legal-prose-wrap .legal-prose {
+  margin-top: 0.5rem;
+}
+
+.legal-prose {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: var(--color-text);
+}
+
+.legal-prose h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin: 1.5rem 0 0.65rem;
+  color: var(--color-text);
+}
+
+.legal-prose h2:first-child {
+  margin-top: 0.75rem;
+}
+
+.legal-prose p {
+  margin-bottom: 0.85rem;
+}
+
+.legal-prose ul {
+  margin: 0.35rem 0 1rem 1.2rem;
+}
+
+.legal-prose li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-prose .legal-disclaimer {
+  background: var(--color-tint, #e6efe9);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  font-size: 0.92rem;
+  margin-bottom: 1.25rem;
+}
+
+.legal-back {
+  margin-top: 2rem;
+  font-size: 0.95rem;
+}
+
+.site-info-page a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-info-page a:hover {
+  color: var(--color-primary-hover);
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.faq-item h2 {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+  color: var(--color-text);
+}
+
+.faq-item p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.98rem;
+}
+
+.credits-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.35rem;
+  margin: 1.25rem 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--color-text);
+  box-shadow: var(--shadow);
+}
+
+.credits-box p {
+  margin-bottom: 0.75rem;
+}
+
+.credits-box p:last-child {
+  margin-bottom: 0;
+}

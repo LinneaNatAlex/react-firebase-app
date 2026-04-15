@@ -15,6 +15,11 @@ import JobsPage from "./pages/JobsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import PricingPage from "./pages/PricingPage";
+import AboutPage from "./pages/AboutPage";
+import FaqPage from "./pages/FaqPage";
+import CreditsPage from "./pages/CreditsPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
 import CompanyPublicProfilePage from "./pages/CompanyPublicProfilePage";
 import CompanyProfileEditPage from "./pages/CompanyProfileEditPage";
 import MagazinePage from "./pages/MagazinePage";
@@ -26,6 +31,7 @@ import PersonPublicCvPage from "./pages/PersonPublicCvPage";
 import SearchPage from "./pages/SearchPage";
 import ChatPage from "./pages/ChatPage";
 import ChatDockGate from "./components/ChatDock";
+import { SiteContentProvider } from "./context/SiteContentContext";
 
 import "./index.css";
 
@@ -230,6 +236,11 @@ function AppContent() {
           }
         />
         <Route path="/priser" element={<PricingPage />} />
+        <Route path="/om" element={<AboutPage />} />
+        <Route path="/faq" element={<FaqPage />} />
+        <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/personvern" element={<PrivacyPolicyPage />} />
+        <Route path="/vilkar" element={<TermsOfServicePage />} />
         <Route
           path="/utblikk/redaksjon"
           element={
@@ -292,9 +303,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
+      <SiteContentProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </SiteContentProvider>
     </AuthProvider>
   );
 }

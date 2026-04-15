@@ -12,6 +12,7 @@ import numpy as np
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
+# Standardmodell lastes fra Hugging Face Hub ved første bruk; se docs/MODEL_ATTRIBUTION.md
 MODEL_NAME = os.environ.get(
     "EMBED_MODEL",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",

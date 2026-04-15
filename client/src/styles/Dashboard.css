@@ -3090,3 +3090,214 @@ a.application-company-link:hover {
   font-size: 0.8rem;
   color: var(--color-muted, #6b7280);
 }
+
+/* Admin: rediger nettsidetekst */
+.admin-site-content {
+  max-width: 52rem;
+}
+
+.admin-site-intro {
+  color: var(--color-muted, #6b7280);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.admin-site-intro code {
+  font-size: 0.85em;
+  background: var(--color-bg, #f3f4f6);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.admin-site-msg {
+  color: #047857;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.admin-site-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.admin-site-section {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.admin-site-section:last-of-type {
+  border-bottom: none;
+}
+
+.admin-site-section h2 {
+  font-size: 1.15rem;
+  margin: 0 0 1rem;
+  color: var(--color-text, #111827);
+}
+
+.admin-site-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.admin-site-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted, #4b5563);
+}
+
+.admin-site-textarea {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 2.5rem;
+  background: var(--color-surface, #fff);
+}
+
+.admin-site-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #2c4a42);
+  box-shadow: 0 0 0 2px rgba(44, 74, 66, 0.12);
+}
+
+.admin-site-faq-block {
+  border: 1px dashed var(--color-border, #d1d5db);
+  border-radius: 10px;
+  padding: 1rem 1rem 0.5rem;
+  margin-bottom: 1rem;
+  background: #fafafa;
+}
+
+.admin-site-faq-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.admin-site-note {
+  font-size: 0.88rem;
+  color: var(--color-muted, #6b7280);
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.button.small {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+/* Admin: analyse (kun på knappetrykk) */
+.admin-analytics {
+  max-width: 52rem;
+}
+
+.admin-analytics-lead {
+  color: var(--color-muted, #6b7280);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+  max-width: 40rem;
+}
+
+.admin-analytics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-analytics-fetched {
+  font-size: 0.9rem;
+  color: var(--color-text, #111827);
+}
+
+.admin-analytics-fetched.muted {
+  color: var(--color-muted, #9ca3af);
+}
+
+.admin-analytics-hint {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+}
+
+.admin-analytics-hint.muted {
+  color: var(--color-muted, #9ca3af);
+}
+
+.admin-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.admin-analytics-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 10px);
+  padding: 1.15rem 1.25rem;
+  box-shadow: var(--shadow, 0 2px 8px rgba(28, 25, 23, 0.06));
+}
+
+.admin-analytics-card h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+  color: var(--color-text, #111827);
+}
+
+.admin-analytics-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  line-height: 1.65;
+  color: var(--color-text, #374151);
+}
+
+.admin-analytics-list li {
+  margin-bottom: 0.35rem;
+}
+
+.admin-analytics-external {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  max-width: 40rem;
+}
+
+.admin-analytics-external h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.65rem;
+}
+
+.admin-analytics-external > p {
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
+  color: var(--color-muted, #6b7280);
+  line-height: 1.55;
+}
+
+.admin-analytics-links {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.7;
+  font-size: 0.92rem;
+  color: var(--color-text, #374151);
+}
+
+.admin-analytics-links a {
+  font-weight: 600;
+}

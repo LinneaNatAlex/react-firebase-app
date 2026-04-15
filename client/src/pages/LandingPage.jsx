@@ -1,31 +1,33 @@
 import { Link } from "react-router-dom";
 import { BRAND_NAME, BRAND_TAGLINE } from "../config/brand";
-import { MAGAZINE_NAME, MAGAZINE_PATH } from "../config/magazine";
+import { MAGAZINE_PATH } from "../config/magazine";
 import { useAuth } from "../context/AuthContext";
+import { useSiteContent } from "../context/SiteContentContext";
+import { renderSiteText } from "../utils/siteText";
 import "../styles/LandingPage.css";
 
 function LandingPage() {
   const { currentUser } = useAuth();
+  const { content } = useSiteContent();
+  const L = content.landing;
+  const F = content.footer;
+  const contactEmail = String(import.meta.env.VITE_CONTACT_EMAIL || "").trim();
+
+  const t = (s) => renderSiteText(s ?? "");
 
   return (
     <div className="landing-page">
       <section className="hero">
         <div className="hero-content">
           <p className="hero-eyebrow">{BRAND_TAGLINE}</p>
-          <h1>Første jobb og tidlig karriere — uten å drukne blant de mest erfarne</h1>
-          <p className="hero-subtitle">
-            Sprang er bygget for studenter, nyutdannede og bedrifter som vil
-            bygge med unge talenter. Samle annonser, søknader og CV på ett sted,
-            med valgfri hjelp til tekst når du trenger det. Du trenger ikke
-            være student for å være med — alle som søker jobb eller ansetter er
-            velkomne.
-          </p>
+          <h1>{t(L.heroTitle)}</h1>
+          <p className="hero-subtitle">{t(L.heroSubtitle)}</p>
           <div className="hero-buttons">
             <Link to="/register" className="button primary large">
-              Opprett konto
+              {t(L.heroBtnPrimary)}
             </Link>
             <Link to="/jobs" className="button secondary large">
-              Se stillinger
+              {t(L.heroBtnSecondary)}
             </Link>
           </div>
         </div>
@@ -38,108 +40,84 @@ function LandingPage() {
 
       <section className="pillars">
         <div className="pillar">
-          <span className="pillar-label">For bedrifter</span>
-          <p>
-            Rekrutter traineer, praksis, nyutdannede og andre roller — med
-            oversikt over søkere og status underveis.
-          </p>
+          <span className="pillar-label">{t(L.pillar1Label)}</span>
+          <p>{t(L.pillar1Text)}</p>
         </div>
         <div className="pillar">
-          <span className="pillar-label">For studenter og tidlig karriere</span>
-          <p>
-            CV, søknad og søknader samlet. Et alternativ der feed og søk ikke
-            bare speiler de med lengst erfaring.
-          </p>
+          <span className="pillar-label">{t(L.pillar2Label)}</span>
+          <p>{t(L.pillar2Text)}</p>
         </div>
         <div className="pillar">
-          <span className="pillar-label">Åpent om verktøy</span>
-          <p>Valgfri hjelp til annonse og tekst. Du styrer innholdet.</p>
+          <span className="pillar-label">{t(L.pillar3Label)}</span>
+          <p>{t(L.pillar3Text)}</p>
         </div>
       </section>
 
       <section className="features">
-        <h2>Det du faktisk får</h2>
-        <p className="features-lead">
-          Konkrete deler av flyten — ikke bare «én plattform» der erfarne
-          profiler ofte dominerer søket.
-        </p>
+        <h2>{t(L.featuresTitle)}</h2>
+        <p className="features-lead">{t(L.featuresLead)}</p>
         <div className="features-grid">
           <article className="feature-card">
             <span className="feature-num">01</span>
-            <h3>Stillingsannonse</h3>
-            <p>
-              Skriv selv, eller bruk forslag som utgangspunkt og rediger i egen
-              tone.
-            </p>
+            <h3>{t(L.feature1Title)}</h3>
+            <p>{t(L.feature1Text)}</p>
           </article>
 
           <article className="feature-card">
             <span className="feature-num">02</span>
-            <h3>Søknad og CV</h3>
-            <p>
-              Privatpersoner bygger profil og søknadstekst her, så bedriften ser
-              hele bildet når du søker.
-            </p>
+            <h3>{t(L.feature2Title)}</h3>
+            <p>{t(L.feature2Text)}</p>
           </article>
 
           <article className="feature-card">
             <span className="feature-num">03</span>
-            <h3>Oversikt for bedriften</h3>
-            <p>
-              Søkere per stilling, status og meldinger, for eksempel ved
-              intervju.
-            </p>
+            <h3>{t(L.feature3Title)}</h3>
+            <p>{t(L.feature3Text)}</p>
           </article>
 
           <article className="feature-card">
             <span className="feature-num">04</span>
-            <h3>Valgfri rangering</h3>
-            <p>
-              Kan brukes som støtte ved mange søkere. Beslutningen er fortsatt
-              deres.
-            </p>
+            <h3>{t(L.feature4Title)}</h3>
+            <p>{t(L.feature4Text)}</p>
           </article>
         </div>
       </section>
 
       <section className="for-whom">
-        <h2>Hvem passer det for?</h2>
-        <p className="for-whom-intro">
-          Naturlig for studenter og tidlig karriere — og for bedrifter som vil
-          nå dem. Andre kandidater og arbeidsgivere er like velkomne.
-        </p>
+        <h2>{t(L.forWhomTitle)}</h2>
+        <p className="for-whom-intro">{t(L.forWhomIntro)}</p>
         <div className="for-whom-grid">
           <div className="for-whom-card">
-            <h3>Bedrifter</h3>
+            <h3>{t(L.companyCardTitle)}</h3>
             <ul>
-              <li>Publiser stillinger som treffer juniorer og nyutdannede</li>
-              <li>Liste over søkere og detaljer</li>
-              <li>Status og melding til kandidater</li>
+              <li>{t(L.companyBullet1)}</li>
+              <li>{t(L.companyBullet2)}</li>
+              <li>{t(L.companyBullet3)}</li>
             </ul>
             <Link to="/register?type=company" className="button primary">
-              Registrer som bedrift
+              {t(L.companyRegBtn)}
             </Link>
           </div>
 
           <div className="for-whom-card">
-            <h3>Privatpersoner</h3>
+            <h3>{t(L.privateCardTitle)}</h3>
             <ul>
-              <li>Profil og CV-tekst på ett sted</li>
-              <li>Søk på utlyste stillinger — også uten studentbevis</li>
-              <li>Se status og beskjeder fra arbeidsgivere</li>
+              <li>{t(L.privateBullet1)}</li>
+              <li>{t(L.privateBullet2)}</li>
+              <li>{t(L.privateBullet3)}</li>
             </ul>
             <Link to="/register?type=person" className="button secondary">
-              Registrer som privatperson
+              {t(L.privateRegBtn)}
             </Link>
           </div>
         </div>
       </section>
 
       <section className="cta">
-        <h2>Lyst å prøve?</h2>
-        <p>Opprett konto og utforsk, uten salgstale i veien.</p>
+        <h2>{t(L.ctaTitle)}</h2>
+        <p>{t(L.ctaText)}</p>
         <Link to="/register" className="button primary large">
-          Kom i gang
+          {t(L.ctaBtn)}
         </Link>
       </section>
 
@@ -151,26 +129,39 @@ function LandingPage() {
           </div>
           <div className="footer-links">
             <div className="footer-column">
-              <h4>Produkt</h4>
-              <Link to="/jobs">Ledige stillinger</Link>
-              <Link to={MAGAZINE_PATH}>{MAGAZINE_NAME}</Link>
-              {currentUser ? <Link to="/priser">Priser</Link> : null}
-              <Link to="/register">Registrering</Link>
-              <Link to="/login">Logg inn</Link>
+              <h4>{t(F.columnProdukt)}</h4>
+              <Link to="/jobs">{t(F.linkJobs)}</Link>
+              <Link to={MAGAZINE_PATH}>{t(F.linkMagazine)}</Link>
+              {currentUser ? (
+                <Link to="/priser">{t(F.linkPricing)}</Link>
+              ) : null}
+              <Link to="/register">{t(F.linkRegister)}</Link>
+              <Link to="/login">{t(F.linkLogin)}</Link>
             </div>
             <div className="footer-column">
-              <h4>Info</h4>
-              <span className="footer-placeholder">Kontakt kommer</span>
+              <h4>{t(F.columnInfo)}</h4>
+              <Link to="/om">{t(F.linkAbout)}</Link>
+              <Link to="/faq">{t(F.linkFaq)}</Link>
+              <Link to="/credits">{t(F.linkCredits)}</Link>
+              {contactEmail ? (
+                <a href={`mailto:${contactEmail}`}>{t(F.linkContact)}</a>
+              ) : (
+                <Link to="/om#kontakt">{t(F.linkContact)}</Link>
+              )}
+            </div>
+            <div className="footer-column">
+              <h4>{t(F.columnLegal)}</h4>
+              <Link to="/personvern">{t(F.linkPrivacy)}</Link>
+              <Link to="/vilkar">{t(F.linkTerms)}</Link>
             </div>
           </div>
         </div>
         <div className="footer-bottom">
-          <p>© {new Date().getFullYear()} {BRAND_NAME}</p>
+          <p>
+            © {new Date().getFullYear()} {BRAND_NAME}
+          </p>
           {currentUser ? (
-            <p className="ai-credit">
-              Privatpersoner: lokale maler. Bedrifter: sky-AI mot betaling
-              – ingen gratis prøveperioder.
-            </p>
+            <p className="ai-credit">{t(F.aiCredit)}</p>
           ) : null}
         </div>
       </footer>

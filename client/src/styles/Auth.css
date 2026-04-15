@@ -232,6 +232,24 @@
   text-decoration: underline;
 }
 
+.auth-legal-links {
+  text-align: center;
+  margin-top: 1.75rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.auth-legal-links a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-legal-links a:hover {
+  text-decoration: underline;
+}
+
 .auth-footer {
   text-align: center;
   margin-top: 2rem;
