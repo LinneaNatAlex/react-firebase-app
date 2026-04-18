@@ -3,7 +3,7 @@ import { BRAND_NAME, BRAND_TAGLINE } from "../config/brand";
 import { MAGAZINE_PATH } from "../config/magazine";
 import { useAuth } from "../context/AuthContext";
 import { useSiteContent } from "../context/SiteContentContext";
-import { renderSiteText } from "../utils/siteText";
+import { getPublicContactEmail, renderSiteText } from "../utils/siteText";
 import "../styles/LandingPage.css";
 
 function LandingPage() {
@@ -11,7 +11,7 @@ function LandingPage() {
   const { content } = useSiteContent();
   const L = content.landing;
   const F = content.footer;
-  const contactEmail = String(import.meta.env.VITE_CONTACT_EMAIL || "").trim();
+  const contactEmail = getPublicContactEmail();
 
   const t = (s) => renderSiteText(s ?? "");
 

@@ -380,7 +380,10 @@ export default function AdminSiteContentPanel() {
         <h2>Personvern og vilkår</h2>
         <p className="admin-site-note">
           Sidene ligger på <code>/personvern</code> og <code>/vilkar</code>.
-          Standardtekst er en mal — ikke juridisk rådgivning.
+          Standardtekst er en mal — ikke juridisk rådgivning. I HTML kan du bruke
+          plassholdere <code>{"{{brand}}"}</code>, <code>{"{{magazine}}"}</code> og{" "}
+          <code>{"{{contactEmailBlock}}"}</code> (siste byttes til e-post fra{" "}
+          <code>VITE_CONTACT_EMAIL</code> eller lenker til Om oss/FAQ).
         </p>
         {Object.keys(SITE_CONTENT_DEFAULTS.legal).map((key) => (
           <Field

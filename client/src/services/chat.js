@@ -314,7 +314,6 @@ export function subscribeToMessages(db, convId, callback, onError) {
   );
   return onSnapshot(
     q,
-    { includeMetadataChanges: true },
     (snap) => {
       const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       callback(sortMessageRows(rows));

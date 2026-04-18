@@ -11,7 +11,7 @@ import { db } from "../firebase";
 import {
   listFriendUidsPreview,
   fetchUserLabelsForIds,
-  fetchParticipantAvatarUrl,
+  fetchParticipantAvatarUrlsMap,
 } from "../services/social";
 import "../styles/ChatDock.css";
 
@@ -134,14 +134,14 @@ function ChatDock() {
       for (const { uid } of friendHints) {
         if (uid) uids.add(uid);
       }
-      const next = {};
-      for (const uid of uids) {
-        if (cancelled) return;
-        try {
-          next[uid] = (await fetchParticipantAvatarUrl(db, uid)) || "";
-        } catch {
-          next[uid] = "";
-        }
+      let next = {};
+      try {
+        const map = await fetchParticipantAvatarUrlsMap(db, [...uids]);
+        next = Object.fromEntries(
+          [...uids].map((uid) => [uid, (map.get(uid) || "").trim()]),
+        );
+      } catch {
+        next = Object.fromEntries([...uids].map((uid) => [uid, ""]));
       }
       if (!cancelled) setConvAvatarByUid((prev) => ({ ...prev, ...next }));
     })();

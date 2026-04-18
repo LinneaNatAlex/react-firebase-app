@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   deleteJobseekerCoverLetter,
   updateJobseekerCoverLetter,
@@ -104,7 +105,8 @@ export default function JobseekerCoverLetterLibraryPanel({
         {filtered.length > FREE_LIMIT ? (
           <div className="library-limit-callout">
             <strong>Gratisgrense:</strong> Du ser de siste {FREE_LIMIT} søknadene her.
-            For flere, legg inn abonnement (kommer i «Priser»).
+            For flere lagrede søknader, se tilbudet «Søknadsbibliotek+» på{" "}
+            <Link to="/priser">Priser</Link> (kjøp når det er aktivert).
           </div>
         ) : null}
 

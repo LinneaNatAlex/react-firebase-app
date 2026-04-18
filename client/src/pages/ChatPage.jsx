@@ -6,7 +6,7 @@ import { useChatSession } from "../hooks/useChatSession";
 import { useToast } from "../components/Toast";
 import { otherParticipant } from "../services/chat";
 import { db } from "../firebase";
-import { fetchParticipantAvatarUrl } from "../services/social";
+import { fetchParticipantAvatarUrlsMap } from "../services/social";
 import { formatChatMessageTime, chatMessageDateTimeIso } from "../utils/chatMessageTime";
 import "../styles/ChatPage.css";
 
@@ -74,14 +74,14 @@ function ChatPage() {
         if (o) uids.add(o);
       }
       if (activeOther) uids.add(activeOther);
-      const next = {};
-      for (const uid of uids) {
-        if (cancelled) return;
-        try {
-          next[uid] = (await fetchParticipantAvatarUrl(db, uid)) || "";
-        } catch {
-          next[uid] = "";
-        }
+      let next = {};
+      try {
+        const map = await fetchParticipantAvatarUrlsMap(db, [...uids]);
+        next = Object.fromEntries(
+          [...uids].map((uid) => [uid, (map.get(uid) || "").trim()]),
+        );
+      } catch {
+        next = Object.fromEntries([...uids].map((uid) => [uid, ""]));
       }
       if (!cancelled) setConvAvatarByUid((prev) => ({ ...prev, ...next }));
     })();

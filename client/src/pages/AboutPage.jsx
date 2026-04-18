@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { BRAND_TAGLINE } from "../config/brand";
 import { useSiteContent } from "../context/SiteContentContext";
-import { renderSiteText } from "../utils/siteText";
+import { getPublicContactEmail, renderSiteText } from "../utils/siteText";
 import "../styles/SiteInfoPages.css";
 
 export default function AboutPage() {
   const { content } = useSiteContent();
   const A = content.about;
-  const contactEmail = String(import.meta.env.VITE_CONTACT_EMAIL || "").trim();
+  const contactEmail = getPublicContactEmail();
   const t = (s) => renderSiteText(s ?? "");
 
   const priserHtml = t(

@@ -65,7 +65,7 @@ export const SITE_CONTENT_DEFAULTS = {
     headingBak: "Bak plattformen",
     headingKontakt: "Kontakt",
     contactPlaceholderHtml:
-      'Offentlig kontaktpunkt kommer. I mellomtiden kan du lese mer under <a href="/faq">ofte stilte spørsmål</a>.',
+      'Har du spørsmål? Se <a href="/faq">ofte stilte spørsmål</a> eller <a href="/om#kontakt">kontakt på Om oss</a>.',
     intro1:
       "{{brand}} er laget for studenter, nyutdannede og bedrifter som vil møtes rundt tidlig karriere: stillingsannonser, søknader, CV og oversikt — uten at erfarne profiler dominerer alt i feed og søk.",
     intro2:

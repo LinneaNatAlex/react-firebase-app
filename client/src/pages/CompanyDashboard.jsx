@@ -16,6 +16,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { fetchProfilesMapForUids } from "../services/social";
 import {
   buildJobPostingTemplate,
   scoreApplicationAgainstJob,
@@ -123,26 +124,28 @@ function CompanyDashboard() {
           );
         });
 
-        appsList = await Promise.all(
-          relevantApps.map(async (document) => {
-            const appData = { id: document.id, ...document.data() };
+        const applicantIds = [
+          ...new Set(
+            relevantApps
+              .map((d) => d.data().userId)
+              .filter(Boolean),
+          ),
+        ];
+        let profileByUserId = new Map();
+        try {
+          profileByUserId = await fetchProfilesMapForUids(db, applicantIds);
+        } catch (e) {
+          console.error("Kunne ikke hente profiler for søkere:", e);
+        }
 
-            // Hent søkerens profil hvis den finnes
-            if (appData.userId) {
-              try {
-                const profileDoc = await getDoc(
-                  doc(db, "profiles", appData.userId),
-                );
-                if (profileDoc.exists()) {
-                  appData.profile = profileDoc.data();
-                }
-              } catch (e) {
-                console.error("Kunne ikke hente profil:", e);
-              }
-            }
-            return appData;
-          }),
-        );
+        appsList = relevantApps.map((document) => {
+          const appData = { id: document.id, ...document.data() };
+          if (appData.userId) {
+            const pdata = profileByUserId.get(appData.userId);
+            if (pdata) appData.profile = pdata;
+          }
+          return appData;
+        });
       }
 
       // Oppdater søkertall på hver stilling

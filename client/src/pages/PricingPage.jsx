@@ -3,6 +3,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { BRAND_NAME } from "../config/brand";
+import { getPublicContactEmail } from "../utils/siteText";
 import "../styles/PricingPage.css";
 
 /** Anbefalt månedspris for ubegrenset bedrifts-AI (juster etter marked) */
@@ -15,7 +16,7 @@ export default function PricingPage() {
   const stripeOrPayUrl = String(
     import.meta.env.VITE_AI_UPGRADE_URL || "",
   ).trim();
-  const contactEmail = String(import.meta.env.VITE_CONTACT_EMAIL || "").trim();
+  const contactEmail = getPublicContactEmail();
 
   const isCompany = userData?.userType === "company";
   const isJobseeker = userData?.userType === "jobseeker";
@@ -107,9 +108,9 @@ export default function PricingPage() {
                   className="button primary"
                   disabled
                   style={{ opacity: 0.8, cursor: "not-allowed" }}
-                  title="Kobles til betaling senere"
+                  title="Betaling kobles til — følg med på Priser"
                 >
-                  Abonnement kommer
+                  Kjøp åpnes snart
                 </button>
                 {currentUser && !isJobseeker ? (
                   <p className="price-note" style={{ marginBottom: 0 }}>
@@ -182,9 +183,9 @@ export default function PricingPage() {
                     className="button secondary"
                     disabled
                     style={{ opacity: 0.85, cursor: "not-allowed" }}
-                    title="Kobles til betaling senere"
+                    title="Betaling kobles til — følg med på Priser"
                   >
-                    Startpakke kommer
+                    Kjøp åpnes snart
                   </button>
                 ) : currentUser ? (
                   <button
@@ -246,8 +247,9 @@ export default function PricingPage() {
                     className="button primary"
                     disabled
                     style={{ opacity: 0.8, cursor: "not-allowed" }}
+                    title="Betaling kobles til — følg med på Priser"
                   >
-                    Stripe kobles på her senere
+                    Kjøp åpnes snart
                   </button>
                 )}
               </div>

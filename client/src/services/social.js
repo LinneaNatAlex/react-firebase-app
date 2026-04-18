@@ -23,7 +23,18 @@ import {
   writeBatch,
   serverTimestamp,
   getCountFromServer,
+  documentId,
 } from "firebase/firestore";
+
+/** Firestore `in` på documentId() — maks 30 per spørring. */
+const DOC_ID_IN_CHUNK = 30;
+
+function chunkIds(ids, size = DOC_ID_IN_CHUNK) {
+  const uniq = [...new Set((ids || []).filter(Boolean))];
+  const out = [];
+  for (let i = 0; i < uniq.length; i += size) out.push(uniq.slice(i, i + size));
+  return out;
+}
 import {
   notifyCompanyNewFollower,
   notifyCompanyFollowedByCompany,
@@ -195,17 +206,25 @@ export async function isUserPendingAccountDeletion(db, uid) {
   }
 }
 
+/** Map uid → true hvis accountDeletionDeadline er satt (chunked lesing). */
+async function fetchAccountDeletionPendingMap(db, uids) {
+  const pending = new Map();
+  for (const group of chunkIds(uids)) {
+    const qy = query(collection(db, "users"), where(documentId(), "in", group));
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => {
+      pending.set(d.id, Boolean(d.data()?.accountDeletionDeadline));
+    });
+  }
+  return pending;
+}
+
 /** Filtrer bort uid-er der konto er under sletting (grace period). */
 export async function filterFriendUidsVisible(db, uids) {
   if (!uids?.length) return [];
-  const unique = [...new Set(uids)];
-  const checks = await Promise.all(
-    unique.map(async (uid) => {
-      const pending = await isUserPendingAccountDeletion(db, uid);
-      return pending ? null : uid;
-    }),
-  );
-  return checks.filter(Boolean);
+  const unique = [...new Set(uids)].filter(Boolean);
+  const pending = await fetchAccountDeletionPendingMap(db, unique);
+  return unique.filter((uid) => !pending.get(uid));
 }
 
 export async function getFriendCount(db, userId) {
@@ -340,13 +359,12 @@ export async function listFollowedCompaniesForUser(db, userId, max = 20) {
       query(collection(db, "users", userId, "followedCompanies"), limit(max)),
     );
     const ids = snap.docs.map((d) => d.id);
-    const out = [];
-    for (const cid of ids) {
-      const prof = await getDoc(doc(db, "companyProfiles", cid));
-      const name = prof.exists() ? prof.data().companyName || "Bedrift" : "Bedrift";
-      out.push({ companyId: cid, companyName: name });
-    }
-    return out;
+    const names = await fetchCompanyNamesForIds(db, ids);
+    const byId = new Map(names.map((x) => [x.id, x.companyName]));
+    return ids.map((cid) => ({
+      companyId: cid,
+      companyName: byId.get(cid) || "Bedrift",
+    }));
   } catch {
     return [];
   }
@@ -378,35 +396,47 @@ export async function listAllFriendUids(db, userId) {
 
 /** @returns {Promise<Array<{ uid: string, label: string }>>} */
 export async function fetchUserLabelsForIds(db, uids) {
-  const out = [];
-  for (const uid of uids) {
-    const s = await getDoc(doc(db, "users", uid));
-    if (s.exists()) {
-      const d = s.data();
+  const order = [...uids];
+  const uniq = [...new Set(order.filter(Boolean))];
+  const labelByUid = new Map();
+  for (const group of chunkIds(uniq)) {
+    const qy = query(collection(db, "users"), where(documentId(), "in", group));
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => {
+      const dat = d.data();
       const label =
-        [d.firstName, d.lastName].filter(Boolean).join(" ").trim() || "Bruker";
-      out.push({ uid, label });
-    } else {
-      out.push({ uid, label: "Bruker" });
-    }
+        [dat.firstName, dat.lastName].filter(Boolean).join(" ").trim() || "Bruker";
+      labelByUid.set(d.id, label);
+    });
   }
-  return out;
+  return order.map((uid) => ({
+    uid,
+    label: labelByUid.get(uid) || "Bruker",
+  }));
 }
 
 /** Venner på offentlig profil: navn + profilbilde (data-URL) fra profiles. Forventer uid-er som allerede er filtrert (bruk listFriendUidsPreview / listAllFriendUids). */
 export async function fetchFriendAvatarsForUids(db, uids) {
-  const labels = await fetchUserLabelsForIds(db, uids);
-  const out = [];
-  for (const { uid, label } of labels) {
-    const prof = await getDoc(doc(db, "profiles", uid));
-    let photoUrl = null;
-    if (prof.exists()) {
-      const img = prof.data().profileImage;
-      if (img && String(img).trim()) photoUrl = String(img).trim();
-    }
-    out.push({ uid, label, photoUrl });
+  const order = [...uids];
+  const labels = await fetchUserLabelsForIds(db, order);
+  const uniq = [...new Set(order.filter(Boolean))];
+  const photoByUid = new Map();
+  for (const group of chunkIds(uniq)) {
+    const qy = query(collection(db, "profiles"), where(documentId(), "in", group));
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => {
+      const img = d.data().profileImage;
+      photoByUid.set(
+        d.id,
+        img && String(img).trim() ? String(img).trim() : null,
+      );
+    });
   }
-  return out;
+  return labels.map(({ uid, label }) => ({
+    uid,
+    label,
+    photoUrl: photoByUid.get(uid) ?? null,
+  }));
 }
 
 /** Alle som følger bedriften (for modal). */
@@ -474,15 +504,104 @@ export async function fetchParticipantAvatarUrl(db, uid) {
   }
 }
 
-/** @returns {Promise<Array<{ id: string, companyName: string }>>} */
-export async function fetchCompanyNamesForIds(db, ids) {
-  const out = [];
-  for (const id of ids) {
-    const s = await getDoc(doc(db, "companyProfiles", id));
-    const companyName = s.exists() ? s.data().companyName || "Bedrift" : "Bedrift";
-    out.push({ id, companyName });
+/**
+ * Hent avatar/logo for mange deltakere med færre roundtrips (én batched users-query,
+ * deretter chunked profiles / companyProfiles).
+ * @returns {Promise<Map<string, string|null>>}
+ */
+export async function fetchParticipantAvatarUrlsMap(db, uids) {
+  const uniq = [...new Set((uids || []).filter(Boolean))];
+  const out = new Map();
+  if (uniq.length === 0) return out;
+  uniq.forEach((u) => out.set(u, null));
+
+  const userByUid = new Map();
+  for (const group of chunkIds(uniq)) {
+    const qy = query(collection(db, "users"), where(documentId(), "in", group));
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => userByUid.set(d.id, d.data()));
+  }
+
+  const companyIds = [];
+  const personIds = [];
+  for (const uid of uniq) {
+    const ut = userByUid.get(uid)?.userType;
+    if (ut === "company") companyIds.push(uid);
+    else personIds.push(uid);
+  }
+
+  const logoById = new Map();
+  for (const group of chunkIds(companyIds)) {
+    const qy = query(
+      collection(db, "companyProfiles"),
+      where(documentId(), "in", group),
+    );
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => {
+      const img = d.data().companyImage;
+      logoById.set(
+        d.id,
+        img && String(img).trim() ? String(img).trim() : null,
+      );
+    });
+  }
+
+  const photoById = new Map();
+  for (const group of chunkIds(personIds)) {
+    const qy = query(collection(db, "profiles"), where(documentId(), "in", group));
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => {
+      const img = d.data().profileImage;
+      photoById.set(
+        d.id,
+        img && String(img).trim() ? String(img).trim() : null,
+      );
+    });
+  }
+
+  for (const uid of uniq) {
+    const ut = userByUid.get(uid)?.userType;
+    if (ut === "company") {
+      out.set(uid, logoById.get(uid) ?? null);
+    } else {
+      out.set(uid, photoById.get(uid) ?? null);
+    }
   }
   return out;
+}
+
+/** Hent profiles/{uid} for mange brukere (chunked — færre roundtrips enn N×getDoc). */
+export async function fetchProfilesMapForUids(db, uids) {
+  const uniq = [...new Set((uids || []).filter(Boolean))];
+  const map = new Map();
+  if (!uniq.length) return map;
+  for (const group of chunkIds(uniq)) {
+    const qy = query(collection(db, "profiles"), where(documentId(), "in", group));
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => map.set(d.id, d.data()));
+  }
+  return map;
+}
+
+/** @returns {Promise<Array<{ id: string, companyName: string }>>} */
+export async function fetchCompanyNamesForIds(db, ids) {
+  const order = [...ids];
+  const uniq = [...new Set(order.filter(Boolean))];
+  const nameById = new Map();
+  for (const group of chunkIds(uniq)) {
+    const qy = query(
+      collection(db, "companyProfiles"),
+      where(documentId(), "in", group),
+    );
+    const snap = await getDocs(qy);
+    snap.docs.forEach((d) => {
+      nameById.set(d.id, d.data().companyName || "Bedrift");
+    });
+  }
+  return order.map((id) => ({
+    id,
+    companyName: nameById.get(id) || "Bedrift",
+  }));
 }
 
 /**
